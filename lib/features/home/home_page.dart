@@ -517,7 +517,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildSection() {
     switch (_selectedIndex) {
       case _systemHubIndex:
-        // قسم الأدمن فقط — يحتوي الأنظمة الخمسة وداخله الانتقال بينها
+        // قسم الأدمن فقط — يحتوي الأنظمة الستة وداخله الانتقال بينها
         return SystemConfig.instance.isAdmin
             ? const SystemHubPage()
             : const EodReportPage();

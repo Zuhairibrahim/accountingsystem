@@ -128,12 +128,13 @@ class DatabaseSeed {
           'is_default': true,
         });
       } else {
-        // النظام الرئيسي: الفروع الأربعة الثابتة (نفس الأنظمة الحقيقية)
+        // النظام الرئيسي: الفروع الخمسة الثابتة (نفس الأنظمة الحقيقية)
         const branches = [
           (code: 'BR01', name: 'فرع صنعاء'),
           (code: 'BR02', name: 'فرع عدن'),
           (code: 'BR03', name: 'فرع تعز'),
           (code: 'BR04', name: 'فرع الحديدة'),
+          (code: 'BR05', name: 'فرع ذمار'),
         ];
         for (var i = 0; i < branches.length; i++) {
           await svc.insert(AppConstants.tBranches, {

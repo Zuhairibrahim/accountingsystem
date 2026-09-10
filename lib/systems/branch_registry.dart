@@ -24,12 +24,13 @@ class BranchRegistry {
   static const String _cacheStore = AppConstants.tSettings;
   static const int _cacheKey = 9101;
 
-  /// الفروع الأربعة الثابتة (تُستثنى من التوليد التلقائي)
+  /// الفروع الخمسة الثابتة (تُستثنى من التوليد التلقائي)
   static const List<({String id, String code})> _fixed = [
     (id: 'branch1', code: 'BR01'),
     (id: 'branch2', code: 'BR02'),
     (id: 'branch3', code: 'BR03'),
     (id: 'branch4', code: 'BR04'),
+    (id: 'branch5', code: 'BR05'),
   ];
 
   List<BranchProfile> _branches = [];

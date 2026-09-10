@@ -2,7 +2,7 @@
 title النظام المحاسبي - تشغيل جميع الأنظمة
 chcp 65001 >nul
 echo ============================================================
-echo          النظام المحاسبي - تشغيل الأنظمة الخمسة
+echo          النظام المحاسبي - تشغيل الأنظمة الستة
 echo ============================================================
 echo.
 set "ROOT=%~dp0"
@@ -30,14 +30,16 @@ start "" chrome --app="http://localhost:8081/?sys=branch1"
 start "" chrome --app="http://localhost:8082/?sys=branch2"
 start "" chrome --app="http://localhost:8083/?sys=branch3"
 start "" chrome --app="http://localhost:8084/?sys=branch4"
+start "" chrome --app="http://localhost:8085/?sys=branch5"
 
-echo تم فتح الأنظمة الخمسة كتطبيقات مستقلة بنجاح.
+echo تم فتح الأنظمة الستة كتطبيقات مستقلة بنجاح.
 echo.
 echo   النظام الأساسي : http://localhost:8080/
 echo   فرع صنعاء       : http://localhost:8081/
 echo   فرع عدن         : http://localhost:8082/
 echo   فرع تعز         : http://localhost:8083/
 echo   فرع الحديدة     : http://localhost:8084/
+echo   فرع ذمار         : http://localhost:8085/
 echo.
 echo أبقِ هذه النافذة مفتوحة أو أغلقها - الخادم يعمل خلف الكواليس.
 timeout /t 5 /nobreak >nul

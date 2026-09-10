@@ -69,4 +69,16 @@ class BranchTheme {
     ],
     icon: Icons.storefront,
   );
+
+  /// فرع ذمار — أزرق (المرتفعات)
+  static const BranchTheme dhamar = BranchTheme(
+    accent: Color(0xFF0369A1),
+    button: Color(0xFF075985),
+    panelGradient: [
+      Color(0xFF082F49),
+      Color(0xFF0369A1),
+      Color(0xFF082940),
+    ],
+    icon: Icons.storefront,
+  );
 }

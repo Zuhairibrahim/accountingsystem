@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'branch_profile.dart';
 import 'branch_theme.dart';
 
-/// تعريف الأنظمة الخمسة داخل مشروع واحد.
+/// تعريف الأنظمة الستة داخل مشروع واحد.
 ///
 /// كل نظام يُفتح عبر باراميتر `sys` في الرابط:
 ///   admin   → النظام الأساسي (التحكم المركزي + استقبال التقارير تلقائياً)
@@ -11,6 +11,7 @@ import 'branch_theme.dart';
 ///   branch2 → فرع عدن
 ///   branch3 → فرع تعز
 ///   branch4 → فرع الحديدة
+///   branch5 → فرع ذمار
 ///
 /// كل نظام يقرأ ويكتب شجرة Firestore معزولة خاصة به داخل السحابة
 /// (`accounting_systems/{systemId}`)، بينما تُرسل تقارير الفروع للنظام
@@ -26,14 +27,16 @@ class SystemConfig {
   static const String branch2Mode = 'branch2';
   static const String branch3Mode = 'branch3';
   static const String branch4Mode = 'branch4';
+  static const String branch5Mode = 'branch5';
 
-  /// الأنظمة الأربعة المرسِلة + النظام الرئيسي المستلم
+  /// الأنظمة المرسِلة + النظام الرئيسي المستلم
   static const List<String> modeIds = [
     adminMode,
     branch1Mode,
     branch2Mode,
     branch3Mode,
     branch4Mode,
+    branch5Mode,
   ];
 
   /// الأنظمة المرسلة فقط (الفروع)
@@ -42,6 +45,7 @@ class SystemConfig {
     branch2Mode,
     branch3Mode,
     branch4Mode,
+    branch5Mode,
   ];
 
   /// الفروع الديناميكية المُضافة من النظام الأساسي (سجل السحابة)
@@ -88,7 +92,7 @@ class SystemConfig {
   /// الديناميكية المضافة من الأدمن مثل `?sys=branch5`,
   /// وإلا يُحدَّد النظام من رقم المنفذ:
   ///   8080 → النظام الأساسي، 8081 → فرع صنعاء، 8082 → فرع عدن،
-  ///   8083 → فرع تعز، 8084 → فرع الحديدة
+  ///   8083 → فرع تعز، 8084 → فرع الحديدة، 8085 → فرع ذمار
   void init([Uri? base]) {
     final uri = base ?? Uri.base;
     final arg = uri.queryParameters['sys']?.trim().toLowerCase();
@@ -111,6 +115,7 @@ class SystemConfig {
       branch2Mode => 'فرع عدن',
       branch3Mode => 'فرع تعز',
       branch4Mode => 'فرع الحديدة',
+      branch5Mode => 'فرع ذمار',
       _ => 'فرع جديد',
     };
   }
@@ -142,6 +147,7 @@ class SystemConfig {
       branch2Mode => (username: 'ad2', password: '1254'),
       branch3Mode => (username: 'ad3', password: '1254'),
       branch4Mode => (username: 'ad4', password: '1254'),
+      branch5Mode => (username: 'ad5', password: '1254'),
       _ => (username: 'admin zuhair', password: '!Yemen.com0510'),
     };
   }
@@ -155,6 +161,7 @@ class SystemConfig {
       branch2Mode => BranchTheme.aden,
       branch3Mode => BranchTheme.taiz,
       branch4Mode => BranchTheme.hudaydah,
+      branch5Mode => BranchTheme.dhamar,
       _ => BranchTheme.admin,
     };
   }
@@ -167,6 +174,7 @@ class SystemConfig {
       branch2Mode => 'BR02',
       branch3Mode => 'BR03',
       branch4Mode => 'BR04',
+      branch5Mode => 'BR05',
       _ => 'BR00',
     };
   }
@@ -179,6 +187,7 @@ class SystemConfig {
       branch2Mode => 'فرع عدن',
       branch3Mode => 'فرع تعز',
       branch4Mode => 'فرع الحديدة',
+      branch5Mode => 'فرع ذمار',
       _ => 'المركز الرئيسي',
     };
   }
@@ -191,6 +200,7 @@ class SystemConfig {
       branch2Mode => 'accounting_system_branch2',
       branch3Mode => 'accounting_system_branch3',
       branch4Mode => 'accounting_system_branch4',
+      branch5Mode => 'accounting_system_branch5',
       _ => 'accounting_system',
     };
   }
@@ -215,6 +225,7 @@ class SystemConfig {
   static const int branch2Port = 8082;
   static const int branch3Port = 8083;
   static const int branch4Port = 8084;
+  static const int branch5Port = 8085;
 
   /// تحديد النظام من رقم المنفذ
   static String modeForPort(int port) => switch (port) {
@@ -222,6 +233,7 @@ class SystemConfig {
     branch2Port => branch2Mode,
     branch3Port => branch3Mode,
     branch4Port => branch4Mode,
+    branch5Port => branch5Mode,
     _ => adminMode,
   };
 
@@ -231,10 +243,11 @@ class SystemConfig {
     branch2Mode => branch2Port,
     branch3Mode => branch3Port,
     branch4Mode => branch4Port,
+    branch5Mode => branch5Port,
     _ => adminPort,
   };
 
-  /// روابط الأنظمة الخمسة (كل نظام بمنفذ مستقل للفتح في Chrome)
+  /// روابط الأنظمة الستة (كل نظام بمنفذ مستقل للفتح في Chrome)
   static String urlFor(String mode, [Uri? base]) {
     final uri = base ?? Uri.base;
     final scheme = uri.hasScheme ? '${uri.scheme}://' : '';
