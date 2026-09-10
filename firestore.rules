@@ -1,20 +1,26 @@
 rules_version = '2';
 
-// قواعد المزامنة السحابية للأنظمة الخمسة
-// ملاحظة: مفتوحة للقراءة والكتابة لأي مستخدم (وضع التطوير)
+// قواعد المزامنة السحابية للأنظمة الستة.
+// ملاحظة: مفتوحة للقراءة والكتابة لأي مستخدم (وضع التطوير)،
+// لكن تغطي بالكامل المسارات المستخدمة فعلياً:
+//   accounting_systems/{systemId}/stores/{store}/records/{key}
+//   accounting_systems/{systemId}/counters/{store}
+//   accounting_eod_reports/{...}
+//   accounting_branches/{...}
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /accounting_systems/{systemId} {
+    // شجرة بيانات كل نظام (مستند النظام + كل مجموعاته الفرعية)
+    match /accounting_systems/{systemId}/{document=**} {
       allow read, write: if true;
     }
 
     // تقارير الفروع المشتركة (تصل للنظام الأساسي فوراً عبر onSnapshot)
-    match /accounting_eod_reports/{reportId} {
+    match /accounting_eod_reports/{document=**} {
       allow read, write: if true;
     }
 
     // سجل الفروع الديناميكية المضافة من النظام الأساسي
-    match /accounting_branches/{branchId} {
+    match /accounting_branches/{document=**} {
       allow read, write: if true;
     }
   }
