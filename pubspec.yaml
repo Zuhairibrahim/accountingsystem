@@ -1,0 +1,48 @@
+name: accountingsystem
+description: "نظام محاسبي متكامل — Firestore (سحابة Firebase)"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # إدارة الحالة والتنقل
+  flutter_riverpod: ^2.6.1
+  go_router: ^17.5.0
+
+  # أدوات عامة وإحصائيات وطباعة
+  intl: ^0.20.2
+  crypto: ^3.0.6
+  collection: ^1.19.0
+  fl_chart: ^1.1.1
+  pdf: ^3.11.1
+  printing: ^5.14.0
+  path: ^1.9.0
+  js: ^0.7.1
+
+  # مسح الباركود من كاميرا الأجهزة (يدعم الويب عبر BarcodeDetector)
+  mobile_scanner: ^7.0.0
+
+  # Firebase (المصدر الوحيد للبيانات — سحابة)
+  firebase_core: ^3.9.0
+  cloud_firestore: ^5.6.0
+
+  # واجهات JS للويب (الطباعة)
+  web: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
