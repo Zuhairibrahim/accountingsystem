@@ -1,8 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- AdMob: مطلوب للاتصال بخوادم الإعلانات -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="accountingsystem"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- AdMob App ID (بني-برناروة) -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-1396394529471927~8735159738"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

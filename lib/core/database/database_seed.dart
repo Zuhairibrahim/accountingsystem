@@ -128,13 +128,14 @@ class DatabaseSeed {
           'is_default': true,
         });
       } else {
-        // النظام الرئيسي: الفروع الخمسة الثابتة (نفس الأنظمة الحقيقية)
+        // النظام الرئيسي: الفروع الأربعة الثابتة (نفس الأنظمة الحقيقية)
+        // — أي فرع جديد بعده (branch5+) يُسجَّل ديناميكياً في سجل سحابة
+        //    accounting_branches ويظهر هنا عبر سجل الفروع.
         const branches = [
           (code: 'BR01', name: 'فرع صنعاء'),
           (code: 'BR02', name: 'فرع عدن'),
           (code: 'BR03', name: 'فرع تعز'),
           (code: 'BR04', name: 'فرع الحديدة'),
-          (code: 'BR05', name: 'فرع ذمار'),
         ];
         for (var i = 0; i < branches.length; i++) {
           await svc.insert(AppConstants.tBranches, {

@@ -3,16 +3,19 @@ import 'package:flutter/foundation.dart';
 import 'branch_profile.dart';
 import 'branch_theme.dart';
 
-/// تعريف الأنظمة الستة داخل مشروع واحد.
+/// تعريف الأنظمة داخل مشروع واحد.
 ///
 /// كل نظام يُفتح عبر باراميتر `sys` في الرابط:
-///   admin   → النظام الأساسي (التحكم المركزي + استقبال التقارير تلقائياً)
-///   branch1 → فرع صنعاء
-///   branch2 → فرع عدن
-///   branch3 → فرع تعز
-///   branch4 → فرع الحديدة
-///   branch5 → فرع ذمار
+///   admin    → النظام الأساسي (التحكم الكامل بكل الفروع + استقبال التقارير تلقائياً)
+///   branch1  → فرع صنعاء (افتراضي ثابت)
+///   branch2  → فرع عدن (افتراضي ثابت)
+///   branch3  → فرع تعز (افتراضي ثابت)
+///   branch4  → فرع الحديدة (افتراضي ثابت)
+///   branch5+ → فروع مُضافة ديناميكياً من تطبيق «إضافة فرع جديد» المربوط بالأدمن
+///              (حتى 50 فرعاً — مثال: branch50)
 ///
+/// الفروع الأربعة الثابتة تُنشأ مع نظام الأدمن مباشرة (النظام الخامس)،
+/// ومن النظام السادس يبدأ إضافة الفروع عبر تطبيق إضافة الفرع الخاص بالأدمن.
 /// كل نظام يقرأ ويكتب شجرة Firestore معزولة خاصة به داخل السحابة
 /// (`accounting_systems/{systemId}`)، بينما تُرسل تقارير الفروع للنظام
 /// الأساسي عبر المجموعة المشتركة `accounting_eod_reports` (وصول فوري).
@@ -27,26 +30,30 @@ class SystemConfig {
   static const String branch2Mode = 'branch2';
   static const String branch3Mode = 'branch3';
   static const String branch4Mode = 'branch4';
+
+  /// معرف فرع ذمار (سابقاً فرع خامس ثابت) — أصبح فرعاً مُضافاً ديناميكياً
+  /// يحتفظ برمزه وبياناته السابقة، وهو أول فرع يُضاف عبر تطبيق إضافة الفرع.
   static const String branch5Mode = 'branch5';
 
-  /// الأنظمة المرسِلة + النظام الرئيسي المستلم
-  static const List<String> modeIds = [
-    adminMode,
+  /// الحد الأقصى لعدد الفروع في المشروع كاملاً (50 فرعاً).
+  static const int maxBranches = 50;
+
+  /// الفروع الثابتة الافتراضية (أربعة فروع تُنشأ مع نظام الأدمن).
+  static const List<String> fixedBranchModes = [
     branch1Mode,
     branch2Mode,
     branch3Mode,
     branch4Mode,
-    branch5Mode,
   ];
 
-  /// الأنظمة المرسلة فقط (الفروع)
-  static const List<String> branchModes = [
-    branch1Mode,
-    branch2Mode,
-    branch3Mode,
-    branch4Mode,
-    branch5Mode,
+  /// الأنظمة المرسِلة + النظام الرئيسي المستلم (الأنظمة الثابتة فقط)
+  static const List<String> modeIds = [
+    adminMode,
+    ...fixedBranchModes,
   ];
+
+  /// الأنظمة المرسلة فقط (الفروع الثابتة)
+  static const List<String> branchModes = fixedBranchModes;
 
   /// الفروع الديناميكية المُضافة من النظام الأساسي (سجل السحابة)
   static final Map<String, BranchProfile> _dynamicProfiles = {};
@@ -55,7 +62,10 @@ class SystemConfig {
   static final ValueNotifier<bool> dynamicBranchReady =
       ValueNotifier<bool>(false);
 
-  /// الفروع المرسلة: الأربعة الثابتة + الديناميكية المُضافة من الأدمن
+  /// إعلام حذف الفرع الديناميكي الحالي من السجل (شاشة الدخول تعرض رسالة منع)
+  static final ValueNotifier<bool> branchDeleted = ValueNotifier<bool>(false);
+
+  /// الفروع المرسلة: الثابتة الأربعة + الديناميكية المُضافة من الأدمن
   static List<String> get allBranchModes =>
       [...branchModes, ..._dynamicProfiles.keys];
 
@@ -70,12 +80,19 @@ class SystemConfig {
       ..addEntries(profiles.map((p) => MapEntry(p.id, p)));
   }
 
+  /// عدد الفروع المسجلة حالياً (ثابتة + ديناميكية)
+  static int get currentBranchCount =>
+      branchModes.length + _dynamicProfiles.length;
+
+  /// المتبقي من السعة قبل الوصول لـ 50 فرعاً
+  static int get remainingBranchSlots => maxBranches - currentBranchCount;
+
   /// ملف تعريف فرع ديناميكي حسب معرفه (أو null إن لم يكن موجوداً)
   static BranchProfile? profileOf(String mode) => _dynamicProfiles[mode];
 
   String _mode = adminMode;
 
-  /// معرف فرع ديناميكي قيد التحميل (مثل `branch5`) — فارغ للأنظمة الثابتة
+  /// معرف فرع ديناميكي قيد التحميل (مثل `branch6`) — فارغ للأنظمة الثابتة
   String _pendingDynamicId = '';
 
   String get pendingDynamicId => _pendingDynamicId;
@@ -89,10 +106,8 @@ class SystemConfig {
   /// تحديد النظام الحالي من الرابط.
   ///
   /// الأولوية للمعامل `sys` (مثل `?sys=branch1`) — ويدعم أيضاً الفروع
-  /// الديناميكية المضافة من الأدمن مثل `?sys=branch5`,
-  /// وإلا يُحدَّد النظام من رقم المنفذ:
-  ///   8080 → النظام الأساسي، 8081 → فرع صنعاء، 8082 → فرع عدن،
-  ///   8083 → فرع تعز، 8084 → فرع الحديدة، 8085 → فرع ذمار
+  /// الديناميكية المضافة من الأدمن مثل `?sys=branch6`, وإلا يُحدَّد النظام
+  /// من رقم المنفذ (8080 → الأدمن، و8080+N → فرع branchN).
   void init([Uri? base]) {
     final uri = base ?? Uri.base;
     final arg = uri.queryParameters['sys']?.trim().toLowerCase();
@@ -103,6 +118,8 @@ class SystemConfig {
       _mode = modeForPort(uri.hasPort ? uri.port : adminPort);
       _pendingDynamicId = '';
     }
+    // إعادة ضبط إعلام الحذف عند فتح أي نظام
+    branchDeleted.value = false;
   }
 
   /// الاسم الظاهر للنظام
@@ -205,6 +222,24 @@ class SystemConfig {
     };
   }
 
+  // ==================== الفروع الديناميكية (حتى 50) ====================
+
+  /// هل المعرّف معرف فرع صالح (branch1 .. branch50)؟
+  static bool isBranchId(String mode) =>
+      branchNumber(mode) != null && branchNumber(mode)! <= maxBranches;
+
+  /// رقم الفرع من المعرّف (branch6 → 6) أو null إن لم يكن فرعاً
+  static int? branchNumber(String mode) {
+    if (!mode.startsWith('branch')) return null;
+    return int.tryParse(mode.substring('branch'.length));
+  }
+
+  /// رابط السحابة الرسمي (يعمل من أي جهاز في أي مكان)
+  static const String cloudBaseUrl = 'https://accountingsystem-fc3f0.web.app';
+
+  /// الرابط السحابي لنظام/فرع معيّن
+  static String cloudUrlFor(String mode) => '$cloudBaseUrl/?sys=$mode';
+
   /// عنوان صندوق البريد المحلي الذي يستقبل تقارير الفروع ويسلّمها للنظام الأساسي.
   ///
   /// يُحسب ديناميكياً من مضيف النافذة الحالية مع منفذ النظام الأساسي (8080)
@@ -219,35 +254,37 @@ class SystemConfig {
     return '$scheme://$host:$adminPort';
   }
 
-  /// المنافذ الثابتة لكل نظام (تشغيل مستقل لكل نظام)
+  // ==================== المنافذ ====================
+  /// القاعدة: منفذ النظام الأساسي (الأدمن)
   static const int adminPort = 8080;
+
+  /// منافذ الفروع الثابتة الأربعة
   static const int branch1Port = 8081;
   static const int branch2Port = 8082;
   static const int branch3Port = 8083;
   static const int branch4Port = 8084;
-  static const int branch5Port = 8085;
 
-  /// تحديد النظام من رقم المنفذ
-  static String modeForPort(int port) => switch (port) {
-    branch1Port => branch1Mode,
-    branch2Port => branch2Mode,
-    branch3Port => branch3Mode,
-    branch4Port => branch4Mode,
-    branch5Port => branch5Mode,
-    _ => adminMode,
-  };
+  /// رمز الفرع الديناميكي بالترقيم التسلسلي (branch5 → 5 ... branch50 → 50)
+  static int? _branchNumberOrNull(String mode) => branchNumber(mode);
 
-  /// المنفذ المخصص لتشغيل نظام معيّن
-  static int portOf(String mode) => switch (mode) {
-    branch1Mode => branch1Port,
-    branch2Mode => branch2Port,
-    branch3Mode => branch3Port,
-    branch4Mode => branch4Port,
-    branch5Mode => branch5Port,
-    _ => adminPort,
-  };
+  /// تحديد النظام من رقم المنفذ.
+  ///
+  /// 8080 → الأدمن، 8080+N → فرع branchN (يغطي حتى 50 فرعاً = منفذ 8130).
+  static String modeForPort(int port) {
+    if (port == adminPort) return adminMode;
+    final n = port - adminPort;
+    if (n >= 1 && n <= maxBranches) return 'branch$n';
+    return adminMode;
+  }
 
-  /// روابط الأنظمة الستة (كل نظام بمنفذ مستقل للفتح في Chrome)
+  /// المنفذ المخصص لتشغيل نظام معيّن (فرع branchN ← منفذ 8080+N).
+  static int portOf(String mode) {
+    final n = _branchNumberOrNull(mode);
+    if (n != null && n >= 1 && n <= maxBranches) return adminPort + n;
+    return adminPort;
+  }
+
+  /// روابط الأنظمة (كل نظام بمنفذ مستقل للفتح في Chrome محلياً)
   static String urlFor(String mode, [Uri? base]) {
     final uri = base ?? Uri.base;
     final scheme = uri.hasScheme ? '${uri.scheme}://' : '';

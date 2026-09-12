@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/utils/audit_log_service.dart';
 import '../../core/utils/cross_tab.dart';
 import '../../core/utils/eod_sync_firestore.dart';
 import '../../core/utils/file_transfer.dart';
@@ -24,24 +25,35 @@ class AdminControlPage extends StatefulWidget {
 class _AdminControlPageState extends State<AdminControlPage> {
   List<Map<String, Object?>> _reports = [];
   List<Map<String, Object?>> _attendanceReports = [];
+  List<Map<String, Object?>> _audits = [];
   bool _loading = true;
   bool _importing = false;
   bool _syncing = false;
   StreamSubscription<Map<String, Object?>>? _sub;
+  StreamSubscription<List<Map<String, Object?>>>? _auditSub;
+  final _filterController = TextEditingController();
+  String _auditFilter = '';
 
   static final NumberFormat _num = NumberFormat('#,##0.00');
+  static final DateFormat _timeFmt = DateFormat('yyyy-MM-dd HH:mm:ss');
 
   @override
   void initState() {
     super.initState();
     // الاستقبال التلقائي الفوري: أي تقرير يكتبه فرع في السحابة يصل هنا مباشرة
     _sub = onReportSent().listen((_) => _syncAll());
+    // سجل العمليات الحي: أي عملية في أي نظام تصل هنا فوراً
+    _auditSub = AuditLogService.watchAuditLogs().listen((list) {
+      if (mounted) setState(() => _audits = list);
+    });
     _syncAll();
   }
 
   @override
   void dispose() {
     _sub?.cancel();
+    _auditSub?.cancel();
+    _filterController.dispose();
     super.dispose();
   }
 
@@ -121,6 +133,14 @@ class _AdminControlPageState extends State<AdminControlPage> {
     await _syncAll();
     if (!mounted) return;
     setState(() => _importing = false);
+    if (pushed) {
+      AuditLogService.record(
+        AuditAction.importReport,
+        details:
+            'استيراد تقرير ${decoded['branch_name']} ليوم ${decoded['report_date']}',
+        actor: 'مدير النظام',
+      );
+    }
     messenger.showSnackBar(
       SnackBar(
         content: Text(
@@ -161,6 +181,12 @@ class _AdminControlPageState extends State<AdminControlPage> {
       // الغياب — إن حُذف التقرير من مصدر آخر
     }
     await _syncAll();
+    AuditLogService.record(
+      AuditAction.deleteReport,
+      details:
+          'حذف تقرير ${report['branch_name']} ليوم ${report['report_date']}',
+      actor: 'مدير النظام',
+    );
     messenger.showSnackBar(const SnackBar(content: Text('تم حذف التقرير')));
   }
 
@@ -422,6 +448,8 @@ class _AdminControlPageState extends State<AdminControlPage> {
                   const SizedBox(height: 20),
                   for (final mode in SystemConfig.allSystemModes)
                     _buildSystemSection(mode),
+                  const SizedBox(height: 20),
+                  _buildAuditSection(),
                 ],
               ),
             ),
@@ -859,7 +887,7 @@ class _AdminControlPageState extends State<AdminControlPage> {
                                     color: const Color(0xFFE2E8F0),
                                   ),
                                 ),
-                                child: Text(
+child: Text(
                                   '${e['name'] ?? '-'} — ${e['status_label'] ?? e['status'] ?? '-'}'
                                   '${(e['note']?.toString() ?? '').isEmpty ? '' : ' (${e['note']})'}',
                                   style: const TextStyle(fontSize: 12),
@@ -875,4 +903,190 @@ class _AdminControlPageState extends State<AdminControlPage> {
       ),
     );
   }
+
+  // ==================== سجل العمليات (Audit) ====================
+  Widget _buildAuditSection() {
+    final needle = _auditFilter.toLowerCase();
+    final filtered = [
+      for (final a in _audits)
+        if (needle.isEmpty ||
+            ('${a['system_name']} ${a['action_label']} '
+                    '${a['details']} ${a['actor']}')
+                .toLowerCase()
+                .contains(needle))
+          a,
+    ];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.history,
+                  color: Color(0xFF7C3AED),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'سجل العمليات (Audit Log)',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      'كل عملية تُنفَّذ في أي نظام تصل هنا فوراً — دخول، إنشاء/حذف فرع، تقارير.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 240,
+                child: TextField(
+                  controller: _filterController,
+                  onChanged: (v) => setState(() => _auditFilter = v),
+                  decoration: InputDecoration(
+                    hintText: 'بحث في السجل...',
+                    prefixIcon: const Icon(Icons.search, size: 18),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 16),
+          if (filtered.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(
+                  _audits.isEmpty
+                      ? 'لا توجد عمليات مسجلة بعد — ستظهر هنا كل عملية تلقائياً'
+                      : 'لا نتائج مطابقة للبحث',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ),
+            )
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                showCheckboxColumn: false,
+                columns: const [
+                  DataColumn(label: Text('الوقت')),
+                  DataColumn(label: Text('النظام')),
+                  DataColumn(label: Text('العملية')),
+                  DataColumn(label: Text('التفاصيل')),
+                  DataColumn(label: Text('بواسطة')),
+                ],
+                rows: [
+                  for (final a in filtered)
+                    DataRow(
+                      cells: [
+                        DataCell(
+                          Text(
+                            _fmtTime(a['time']),
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            '${a['system_name'] ?? '-'}'
+                            '${(a['branch_code']?.toString() ?? '').isEmpty ? '' : ' (${a['branch_code']})'}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _auditIcon(a['action']?.toString()),
+                                size: 16,
+                                color: _auditColor(a['action']?.toString()),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                a['action_label']?.toString() ?? '-',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        DataCell(
+                          SizedBox(
+                            width: 340,
+                            child: Text(
+                              a['details']?.toString() ?? '-',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            '${a['actor'] ?? '-'}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _fmtTime(Object? t) {
+    final raw = t?.toString() ?? '';
+    final dt = DateTime.tryParse(raw);
+    if (dt == null) return raw;
+    return _timeFmt.format(dt.toLocal());
+  }
+
+  IconData _auditIcon(String? action) => switch (action) {
+        AuditAction.login => Icons.login,
+        AuditAction.createBranch => Icons.add_business_outlined,
+        AuditAction.deleteBranch => Icons.storefront,
+        AuditAction.eodSent => Icons.post_add,
+        AuditAction.attendanceSent => Icons.fact_check_outlined,
+        AuditAction.importReport => Icons.file_download_outlined,
+        AuditAction.deleteReport => Icons.delete_outline,
+        _ => Icons.info_outline,
+      };
+
+  Color _auditColor(String? action) => switch (action) {
+        AuditAction.login => const Color(0xFF2563EB),
+        AuditAction.createBranch => const Color(0xFF16A34A),
+        AuditAction.deleteBranch => const Color(0xFFDC2626),
+        AuditAction.eodSent => const Color(0xFFCA8A04),
+        AuditAction.attendanceSent => const Color(0xFF0D9488),
+        AuditAction.importReport => const Color(0xFF7C3AED),
+        AuditAction.deleteReport => const Color(0xFFDC2626),
+        _ => const Color(0xFF64748B),
+      };
 }

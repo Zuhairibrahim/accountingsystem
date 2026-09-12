@@ -1,4 +1,4 @@
-"""تشغيل الأنظمة الستة بشكل احترافي (الخادم المحلي الموحّد).
+"""تشغيل الأنظمة بشكل احترافي (الخادم المحلي للأنظمة الثابتة).
 
 - خدمة تطبيق الويب (Flutter build/web) على المنافذ:
     8080 -> النظام الأساسي (التحكم)   http://localhost:8080/?sys=admin
@@ -6,13 +6,12 @@
     8082 -> فرع عدن                    http://localhost:8082/?sys=branch2
     8083 -> فرع تعز                    http://localhost:8083/?sys=branch3
     8084 -> فرع الحديدة                http://localhost:8084/?sys=branch4
-    8085 -> فرع ذمار                    http://localhost:8085/?sys=branch5
 - صندوق بريد محلي (Relay) حتى تصل تقارير الفروع للنظام الأساسي فوراً:
     POST /api/report    <- الفروع ترسل تقرير نهاية اليوم (JSON)
     GET  /api/reports   <- النظام الأساسي يستقبل التقارير تلقائياً
     GET  /api/ping      <- فحص جاهزية الخادم
-- إنشاء تطبيق لفرع جديد تلقائياً على سطح المكتب عند إنشائه من الأدمن:
-    POST /api/create_app <- ينشئ اختصار Windows (.lnk) يفتح هذا الفرع كتطبيق مستقل
+- إنشاء تطبيق لفرع جديد تلقائياً داخل مجلد المسؤول عند إنشائه من الأدمن:
+    POST /api/create_app <- ينشئ اختصار Windows (.lnk) يفتح الفرع كنافذة مستقلة في Chrome
 """
 import json
 import os
@@ -29,16 +28,52 @@ HOST = '0.0.0.0'
 APPS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'apps')
 RELAY_DIR = os.path.join(tempfile.gettempdir(), 'accounting_relay')
 
+# الأنظمة الثابتة فقط (الأدمن + الفروع الأربعة الافتراضية).
+# الفروع المضافة (branch5+) تعمل عبر الرابط السحابي من أي مكان.
 PORTS = {
     8080: 'النظام الأساسي',
     8081: 'فرع صنعاء',
     8082: 'فرع عدن',
     8083: 'فرع تعز',
     8084: 'فرع الحديدة',
-    8085: 'فرع ذمار',
 }
 
 os.makedirs(RELAY_DIR, exist_ok=True)
+
+ADMIN_DIR = os.path.join(os.path.expanduser('~'), 'Desktop', 'admin')
+ICON_DIR = os.path.join(ADMIN_DIR, 'icons')
+RENDER_PS1 = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'tool', 'exe_build', 'render_icon.ps1',
+)
+
+# لوحة ألوان تُستخدم تلقائياً لأيقونة كل فرع جديد حسب رقم المعرّف
+PALETTES = [
+    ('#0EA5E9', '#0C4A6E'),
+    ('#10B981', '#064E3B'),
+    ('#F472B6', '#831843'),
+    ('#A78BFA', '#4C1D95'),
+    ('#14B8A6', '#134E4A'),
+    ('#F59E0B', '#92400E'),
+    ('#EF4444', '#7F1D1D'),
+    ('#3B82F6', '#1E3A8A'),
+    ('#84CC16', '#365314'),
+    ('#06B6D4', '#164E63'),
+]
+
+CHROME_CANDIDATES = [
+    os.path.expandvars(r'%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe'),
+    os.path.join(os.environ.get('ProgramFiles', ''), 'Google',
+                 'Chrome', 'Application', 'chrome.exe'),
+    os.path.join(os.environ.get('ProgramFiles(x86)', ''),
+                 'Google', 'Chrome', 'Application', 'chrome.exe'),
+]
+
+EDGE_CANDIDATES = [
+    os.path.expandvars(r'%LOCALAPPDATA%\Microsoft\Edge\Application\msedge.exe'),
+    os.path.join(os.environ.get('ProgramFiles', ''), 'Microsoft',
+                 'Edge', 'Application', 'msedge.exe'),
+]
 
 # تنظيف صندوق البريد عند كل إقلاع
 for _f in os.listdir(RELAY_DIR):
@@ -79,45 +114,111 @@ def _desktop_path():
     return fallback if os.path.isdir(fallback) else os.path.expanduser('~')
 
 
-def create_desktop_app(branch):
-    """إنشاء اختصار (.lnk) لتطبيق فرع مستقل على سطح المكتب.
+def _branch_number(sys_id):
+    m = re.search(r'(\d+)$', str(sys_id))
+    return int(m.group(1)) if m else 90
 
-    branch: dict باسم/id/url الخاص بالفرع.
+
+def _find_browser():
+    for path in CHROME_CANDIDATES + EDGE_CANDIDATES:
+        if path and os.path.isfile(path):
+            return path
+    for cand in ('chrome', 'msedge'):
+        try:
+            out = subprocess.check_output(
+                ['where', cand], shell=True, text=True,
+                stderr=subprocess.STDOUT,
+            )
+            return out.strip().splitlines()[0].strip()
+        except Exception:
+            continue
+    return None
+
+
+def _render_branch_icon(name, code, sys_id):
+    """توليد أيقونة مخصصة لاسم الفرع الجديد (تُحفظ في مجلد المسؤول/icons)."""
+    try:
+        number = _branch_number(sys_id)
+        c1, c2 = PALETTES[(number - 1) % len(PALETTES)]
+        meta = os.path.join(ICON_DIR, f'{sys_id}_meta.txt')
+        with open(meta, 'w', encoding='utf-8') as f:
+            f.write('\n'.join((name, 'النظام المحاسبي', code, 'branch', c1, c2)) + '\n')
+        os.makedirs(ICON_DIR, exist_ok=True)
+        if os.path.isfile(RENDER_PS1):
+            subprocess.run(
+                [
+                    'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
+                    '-File', RENDER_PS1, '-MetaPath', meta,
+                    '-OutBase', os.path.join(ICON_DIR, sys_id),
+                ],
+                check=True, timeout=90,
+            )
+        icon = os.path.join(ICON_DIR, f'{sys_id}.ico')
+        return icon if os.path.isfile(icon) else None
+    except Exception:
+        return None
+
+
+def create_desktop_app(branch):
+    """إنشاء تطبيق فرع مستقل تلقائياً داخل مجلد المسؤول (C:/Users/PC/Desktop/admin).
+
+    branch: dict باسم/id/كود/رابط/اسم مستخدم/كلمة سر الخاص بالفرع.
+    ينشئ:
+    - اختصار (.lnk) يفتح الفرع في Chrome كنافذة مستقلة عبر الرابط السحابي.
+    - أيقونة مخصصة باسم الفرع داخل admin/icons.
+    - ملف «بيانات الدخول» باسم المستخدم وكلمة السر والرابط.
     يعيد (ok, message, path).
     """
     name = _safe_name(branch.get('name') or 'نظام جديد')
     app_url = str(branch.get('url') or '').strip()
-    branch_id = str(branch.get('id') or '').strip()
+    sys_id = str(branch.get('id') or '').strip()
+    code = str(branch.get('code') or '').strip() or 'BR--'
+    username = str(branch.get('username') or '').strip()
+    password = str(branch.get('password') or '').strip()
     if not app_url:
         return False, 'لا يوجد رابط للفرع', None
 
-    desktop = _desktop_path()
-    shortcut = os.path.join(desktop, f'{name} — تطبيق.lnk')
-
-    # مسار الخادم و launcher العام داخل apps/
-    launcher = os.path.join(APPS_DIR, 'run_app.bat')
-    if not os.path.isfile(launcher):
-        return False, 'لم يُعثر على مشغّل التطبيقات (apps/run_app.bat)', None
-
-    ps_script = (
-        "$s=(New-Object -ComObject WScript.Shell).CreateShortcut("
-        + json.dumps(shortcut, ensure_ascii=False)
-        + ");"
-        + "$s.TargetPath=" + json.dumps(launcher, ensure_ascii=False) + ';'
-        + "$s.Arguments=" + json.dumps(app_url, ensure_ascii=False) + ';'
-        + "$s.Description=" + json.dumps(f'نظام: {name}', ensure_ascii=False) + ';'
-        + "$s.WorkingDirectory=" + json.dumps(APPS_DIR, ensure_ascii=False) + ';'
-        + "$s.Save();"
-    )
-    try:
+    os.makedirs(ADMIN_DIR, exist_ok=True)
+    icon = _render_branch_icon(name, code, sys_id)
+    browser = _find_browser()
+    shortcut = os.path.join(ADMIN_DIR, f'{name}.lnk')
+    if browser:
+        icon_location = (icon or browser + ',0').replace('/', '\\')
+        ps_script = (
+            "$s=(New-Object -ComObject WScript.Shell).CreateShortcut("
+            + json.dumps(shortcut, ensure_ascii=False)
+            + ');'
+            + "$s.TargetPath=" + json.dumps(browser, ensure_ascii=False) + ';'
+            + "$s.Arguments=" + json.dumps(f'--app={app_url} --new-window', ensure_ascii=False) + ';'
+            + "$s.Description=" + json.dumps(f'النظام المحاسبي — {name} ({code})', ensure_ascii=False) + ';'
+            + "$s.IconLocation=" + json.dumps(icon_location, ensure_ascii=False) + ';'
+            + "$s.Save();"
+        )
         subprocess.run(
             ['powershell', '-NoProfile', '-Command', ps_script],
-            check=True,
-            timeout=60,
+            check=True, timeout=60,
         )
-    except Exception as e:
-        return False, f'تعذّر إنشاء الاختصار: {e}', None
-    return True, f'تم إنشاء تطبيق «{name}» على سطح المكتب', shortcut
+    else:
+        shortcut = os.path.join(ADMIN_DIR, f'{name}.url')
+        with open(shortcut, 'w', encoding='utf-8') as f:
+            f.write('[InternetShortcut]\r\nURL=' + app_url + '\r\n')
+
+    # ملف بيانات الدخول للفرع الجديد (اسم المستخدم + كلمة السر + الرابط)
+    note = os.path.join(ADMIN_DIR, f'{name} — بيانات الدخول.txt')
+    with open(note, 'w', encoding='utf-8') as f:
+        f.write('\n'.join([
+            'النظام المحاسبي — فرع جديد',
+            '===========================',
+            'اسم الفرع: ' + name,
+            'كود الفرع: ' + code,
+            'اسم المستخدم: ' + username,
+            'كلمة السر: ' + password,
+            'رابط الدخول: ' + app_url,
+            '',
+            'عند فتح التطبيق يتم نقلك تلقائياً إلى Google Chrome',
+            'وتسجيل الدخول باسم المستخدم وكلمة السر أعلاه.',
+        ]) + '\n')
+    return True, f'تم إنشاء تطبيق «{name}» في مجلد المسؤول', shortcut
 
 
 class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):

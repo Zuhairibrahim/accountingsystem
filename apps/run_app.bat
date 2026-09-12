@@ -5,7 +5,11 @@ cd /d "%~dp0.."
 
 rem ============ تحديد رابط التطبيق (المعامل الأول أو الافتراضي) ============
 set "APP_URL=%~1"
-if "%APP_URL%"=="" set "APP_URL=http://localhost:8080/?sys=admin"
+if "%APP_URL%"=="" set "APP_URL=https://accountingsystem-fc3f0.web.app/?sys=admin"
+
+rem ============ إذا كان الرابط سحابياً (https) افتح مباشرة بدون أي تأخير ============
+echo %APP_URL% | findstr /i "https://" >nul
+if not errorlevel 1 goto :open
 
 rem ============ التأكد من أن الخادم المحلي يعمل (وبدء تشغيله إن لزم) ============
 where curl >nul 2>&1
@@ -23,7 +27,8 @@ if %errorlevel%==0 (
     )
 )
 
-rem ============ فتح التطبيق كنافذة مستقلة (بدون أشرطة المتصفح) ============
+:open
+rem ============ فتح التطبيق كنافذة مستقلة في Chrome ============
 start "" chrome --app="%APP_URL%" --new-window
 
 exit

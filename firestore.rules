@@ -23,5 +23,10 @@ service cloud.firestore {
     match /accounting_branches/{document=**} {
       allow read, write: if true;
     }
+
+    // سجل العمليات المشترك (تصل لحظة عملها من كل نظام وتُفحص من لوحة الأدمن)
+    match /accounting_audit_logs/{document=**} {
+      allow read, write: if true;
+    }
   }
 }

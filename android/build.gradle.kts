@@ -1,7 +1,8 @@
 allprojects {
     repositories {
-        google()
         mavenCentral()
+        // مرآة Google Maven (dl.google.com) لأن الشبكة المحلية تحجبه
+        maven("https://maven.aliyun.com/repository/google")
     }
 }
 

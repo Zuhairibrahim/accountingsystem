@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/ads/ad_service.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/database/database_service.dart';
 import '../../core/database/db_filter.dart';
@@ -261,6 +262,8 @@ class _PosPageState extends State<PosPage> {
         backgroundColor: Colors.green.shade700,
       ),
     );
+    // عرض إعلان بيني عند إتمام البيع (بعد تراجع يراعي سياسة AdMob)
+    AdService.instance.tryShowInterstitial(source: 'pos_checkout');
   }
 
   // ==================== الواجهة ====================

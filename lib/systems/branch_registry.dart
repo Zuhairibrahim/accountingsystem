@@ -24,14 +24,55 @@ class BranchRegistry {
   static const String _cacheStore = AppConstants.tSettings;
   static const int _cacheKey = 9101;
 
-  /// الفروع الخمسة الثابتة (تُستثنى من التوليد التلقائي)
+  /// الفروع الأربعة الثابتة (تُنشأ مع نظام الأدمن وتُستثنى من التوليد التلقائي)
   static const List<({String id, String code})> _fixed = [
     (id: 'branch1', code: 'BR01'),
     (id: 'branch2', code: 'BR02'),
     (id: 'branch3', code: 'BR03'),
     (id: 'branch4', code: 'BR04'),
-    (id: 'branch5', code: 'BR05'),
   ];
+
+  static bool _isFixedId(String id) =>
+      _fixed.any((f) => f.id == id);
+
+  /// ملفات تعريف الفروع الثابتة الأربعة (نفس هوية أنظمة الفروع الحقيقية)
+  List<BranchProfile> _fixedProfiles() {
+    const names = {
+      'branch1': 'فرع صنعاء',
+      'branch2': 'فرع عدن',
+      'branch3': 'فرع تعز',
+      'branch4': 'فرع الحديدة',
+    };
+    const users = {
+      'branch1': 'ad1',
+      'branch2': 'ad2',
+      'branch3': 'ad3',
+      'branch4': 'ad4',
+    };
+    return [
+      for (var i = 0; i < _fixed.length; i++)
+        BranchProfile(
+          id: _fixed[i].id,
+          name: names[_fixed[i].id]!,
+          code: _fixed[i].code,
+          username: users[_fixed[i].id]!,
+          password: '1254',
+          dbName: 'accounting_system_${_fixed[i].id}',
+          themeIndex: i,
+        ),
+    ];
+  }
+
+  /// دمج الفروع الثابتة دائماً (حتى لو لم تكن مسجلة في السحابة) مع المحمّل
+  List<BranchProfile> _mergeWithFixed(List<BranchProfile> fromCloud) {
+    final fixed = _fixedProfiles();
+    final fixedIds = {for (final f in fixed) f.id};
+    return [
+      ...fixed,
+      for (final b in fromCloud)
+        if (b.id.isNotEmpty && !fixedIds.contains(b.id)) b,
+    ];
+  }
 
   List<BranchProfile> _branches = [];
   bool _loaded = false;
@@ -100,33 +141,39 @@ class BranchRegistry {
       return;
     }
     if (!_loaded) {
-      _branches = await _fromLocalCache();
+      _branches = _mergeWithFixed(await _fromLocalCache());
       _loaded = true;
-      SystemConfig.registerDynamicProfiles(_branches);
+      SystemConfig.registerDynamicProfiles(_onlyDynamic(_branches));
     }
-    if (find(pendingId) == null) {
-      // الأول فتح لهذا الفرع الديناميكي → نجلب ملفه من سجل السحابة
-      try {
-        await _ensureFirebase();
-        final doc = await FirebaseFirestore.instance
-            .collection(collection)
-            .doc(pendingId)
-            .get();
-        if (doc.exists) {
-          final p = BranchProfile.fromJson(doc.data()!);
-          if (p.id.isNotEmpty) {
-            _branches = [
-              for (final b in _branches)
-                if (b.id != p.id) b,
-              p,
-            ];
-            SystemConfig.registerDynamicProfiles(_branches);
-            await _cacheLocally();
-          }
+    // فحص السحابة دائماً (المرجع الموثوق): إن لم يوجد الفرع فيها فهو محذوف
+    BranchProfile? cloudProfile;
+    var cloudChecked = false;
+    try {
+      await _ensureFirebase();
+      final doc = await FirebaseFirestore.instance
+          .collection(collection)
+          .doc(pendingId)
+          .get();
+      cloudChecked = true;
+      if (doc.exists) {
+        final p = BranchProfile.fromJson(doc.data()!);
+        if (p.id.isNotEmpty) {
+          cloudProfile = p;
+          _branches = _mergeWithFixed([
+            for (final b in _branches)
+              if (b.id != p.id) b,
+            p,
+          ]);
+          SystemConfig.registerDynamicProfiles(_onlyDynamic(_branches));
+          await _cacheLocally();
         }
-      } catch (_) {
-        // بدون سحابة → يكفي الكاش المحلي
       }
+    } catch (_) {
+      // بدون سحابة (أو فشل) → نكتفي بالكاش المحلي إن وُجد
+    }
+    if (cloudChecked && cloudProfile == null) {
+      // الفرع حُذف من السجل → تُعرض رسالة المنع في شاشة الدخول
+      SystemConfig.branchDeleted.value = true;
     }
     SystemConfig.dynamicBranchReady.value = true;
   }
@@ -134,7 +181,7 @@ class BranchRegistry {
   /// تحميل كل الفروع المسجلة من السحابة (مع الكاش المحلي كاحتياط) وتحديث النظام.
   Future<void> loadAll() async {
     if (!_loaded) {
-      _branches = await _fromLocalCache();
+      _branches = _mergeWithFixed(await _fromLocalCache());
       _loaded = true;
     }
     try {
@@ -143,10 +190,10 @@ class BranchRegistry {
           .collection(collection)
           .orderBy('createdAt')
           .get();
-      _branches = snap.docs
+      _branches = _mergeWithFixed(snap.docs
           .map((d) => BranchProfile.fromJson(d.data()))
           .where((p) => p.id.isNotEmpty)
-          .toList();
+          .toList());
       registerAndCache();
     } catch (_) {
       registerAndCache();
@@ -155,9 +202,13 @@ class BranchRegistry {
 
   /// تسجيل الفروع في SystemConfig + تحديث الكاش المحلي.
   void registerAndCache() {
-    SystemConfig.registerDynamicProfiles(_branches);
+    SystemConfig.registerDynamicProfiles(_onlyDynamic(_branches));
     _cacheLocally();
   }
+
+  /// الفروع غير الثابتة فقط (الثابتة بالفعل ضمن قوائم SystemConfig الثابتة)
+  static List<BranchProfile> _onlyDynamic(List<BranchProfile> all) =>
+      [for (final b in all) if (!_isFixedId(b.id)) b];
 
   /// إنشاء فرع جديد: تُولَّد تلقائياً المعرف والكود وقاعدة البيانات والتصميم.
   Future<BranchProfile> createBranch({

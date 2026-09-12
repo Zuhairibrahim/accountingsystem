@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/database/database_service.dart';
 import '../../core/database/db_filter.dart';
+import '../../core/utils/audit_log_service.dart';
 import '../../core/utils/cross_tab.dart';
 import '../../core/utils/file_transfer.dart';
 import '../../core/utils/system_sync.dart';
@@ -296,6 +297,17 @@ class _AttendancePageState extends State<AttendancePage> {
 
   Future<void> _sendToday() async {
     final messenger = ScaffoldMessenger.of(context);
+    if (_employees.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'لا يوجد موظفون في هذا الفرع بعد — أضف الموظفين أولاً ثم أرسل التقرير',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
     setState(() => _sending = true);
     final data = _buildReportJson();
     await _storeReportLocal();
@@ -310,6 +322,11 @@ class _AttendancePageState extends State<AttendancePage> {
     final json = const JsonEncoder.withIndent('  ').convert(data);
     final filename = 'حضور($_branchCode)-$_dateKey.json'.replaceAll('/', '-');
     downloadTextFile(filename, json);
+    // تسجيل عملية إرسال تقرير الحضور في سجل العمليات
+    AuditLogService.record(
+      AuditAction.attendanceSent,
+      details: 'إرسال تقرير الحضور $_branchName — $_dateKey',
+    );
     if (!mounted) return;
     setState(() => _sending = false);
     messenger.showSnackBar(

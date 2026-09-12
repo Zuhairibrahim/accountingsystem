@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/auth/auth_session.dart';
+import '../../core/utils/audit_log_service.dart';
 import '../../systems/system_config.dart';
 
 /// شاشة تسجيل الدخول — تحقق من اسم المستخدم وكلمة السر المخصصة لكل نظام.
@@ -27,6 +28,7 @@ class _LoginPageState extends State<LoginPage> {
 
   void _submit() {
     setState(() => _error = null);
+    if (SystemConfig.branchDeleted.value) return;
 
     final expected = SystemConfig.instance.credentials;
     final user = _userController.text.trim();
@@ -37,6 +39,13 @@ class _LoginPageState extends State<LoginPage> {
     }
     if (user == expected.username && pass == expected.password) {
       setState(() => _loading = true);
+      // تسجيل عملية الدخول الناجح في سجل العمليات (يصل للأدمن فوراً)
+      AuditLogService.record(
+        AuditAction.login,
+        details:
+            'دخول ناجح — ${SystemConfig.instance.systemLabel} (${SystemConfig.instance.branchCode})',
+        actor: user,
+      );
       // دخول سريع بدون أي تأخير
       AuthSession.instance.login();
       return;
@@ -63,6 +72,9 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           );
+        }
+        if (SystemConfig.branchDeleted.value) {
+          return _buildDeletedBranch();
         }
         return _buildForm();
       },
@@ -252,6 +264,116 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ],
                 ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// شاشة منع الدخول عند حذف الفرع من قبل مدير النظام.
+  Widget _buildDeletedBranch() {
+    final sys = SystemConfig.instance;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFFDF2F2),
+                Color(0xFFFEE2E2),
+              ],
+            ),
+          ),
+          child: Center(
+            child: Container(
+              width: 520,
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withValues(alpha: 0.18),
+                    blurRadius: 32,
+                    offset: const Offset(0, 14),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 76,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.delete_forever_outlined,
+                      color: Colors.red.shade700,
+                      size: 42,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'تم حذف هذا الفرع من السجل',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFB91C1C),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'عذراً، تم حذف هذا الفرع بنجاح من قبل مدير النظام '
+                    'زهير ابن إبراهيم القحطاني، ولا يمكن الدخول إلى نظامه بعد الآن.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.7,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.amber.shade200,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.amber.shade800,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'للتواصل أو إعادة تفعيل الفرع: ${sys.systemLabel} من '
+                            'النظام الأساسي (لوحة تحكم الأدمن).',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.amber.shade900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

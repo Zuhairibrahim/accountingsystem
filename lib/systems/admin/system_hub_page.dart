@@ -4,11 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
-import 'package:web/web.dart' as web;
-
 import '../../core/constants/app_constants.dart';
 import '../../core/database/database_service.dart';
 import '../../core/utils/cross_tab.dart';
+import '../../core/utils/open_link.dart';
 import '../../core/utils/system_sync.dart';
 import '../../systems/branch_registry.dart';
 import '../../systems/system_config.dart';
@@ -86,12 +85,7 @@ class _SystemHubPageState extends State<SystemHubPage> {
     return '$scheme://$host/?sys=$mode';
   }
 
-  String _appLink(String mode) {
-    final uri = Uri.base;
-    final scheme = uri.hasScheme ? '${uri.scheme}://' : '';
-    final host = uri.host.isEmpty ? 'localhost' : uri.host;
-    return '$scheme$host:${SystemConfig.portOf(mode)}/?sys=$mode';
-  }
+  String _appLink(String mode) => SystemConfig.cloudUrlFor(mode);
 
   List<Map<String, Object?>> _reportsOf(String code) => [
     for (final r in _reports) if ((r['branch_code']?.toString() ?? '') == code) r,
@@ -390,7 +384,7 @@ class _SystemHubPageState extends State<SystemHubPage> {
                     backgroundColor: color,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  onPressed: () => web.window.location.href = link,
+                  onPressed: () => openLink(link),
                   icon: const Icon(Icons.login, size: 18),
                   label: Text(
                     isAdmin ? 'فتح التطبيق' : 'دخول داخل التطبيق',

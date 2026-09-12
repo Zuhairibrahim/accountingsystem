@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/ads/app_ad_banner.dart';
 import '../../core/auth/auth_session.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/database/database_service.dart';
@@ -214,6 +215,8 @@ class _HomePageState extends State<HomePage> {
                               : _buildDashboard())
                         : _buildSection(),
                   ),
+                  // بانر AdMob أسفل كل الشاشات (ظاهر بشكل متكرر)
+                  const AppAdBanner(),
                 ],
               ),
             ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/database/database_service.dart';
+import '../../core/utils/audit_log_service.dart';
 import '../../core/utils/system_sync.dart';
 import '../../systems/branch_profile.dart';
 import '../../systems/branch_registry.dart';
@@ -55,13 +56,7 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
     });
   }
 
-  String _linkOf(BranchProfile p) {
-    final uri = Uri.base;
-    final scheme = uri.hasScheme ? uri.scheme : 'http';
-    final host = uri.host.isEmpty ? 'localhost' : uri.host;
-    final port = uri.hasPort ? uri.port : SystemConfig.adminPort;
-    return '$scheme://$host:$port/?sys=${p.id}';
-  }
+  String _linkOf(BranchProfile p) => SystemConfig.cloudUrlFor(p.id);
 
   Future<void> _create() async {
     final name = _nameController.text.trim();
@@ -106,13 +101,21 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
         _branches = BranchRegistry.instance.branches;
         _codeController.text = BranchRegistry.instance.nextCode;
       });
-      // إنشاء تطبيق مستقل للفرع على سطح المكتب تلقائياً (عبر الخادم المحلي)
+      // إنشاء التطبيق المستقل للفرع تلقائياً داخل مجلد المسؤول (عبر الخادم المحلي)
       final appCreated = await createDesktopApp({
         'id': p.id,
         'name': p.name,
         'code': p.code,
         'url': _linkOf(p),
+        'username': p.username,
+        'password': p.password,
       });
+      // تسجيل عملية إنشاء الفرع في سجل العمليات (يظهر في لوحة الأدمن فوراً)
+      AuditLogService.record(
+        AuditAction.createBranch,
+        details: 'إنشاء فرع «${p.name}» — الرمز ${p.code} (${p.id})',
+        actor: 'مدير النظام',
+      );
       await _showCreated(p, appCreated: appCreated);
     } catch (_) {
       if (!mounted) return;
@@ -175,10 +178,12 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
                     Expanded(
                       child: Text(
                         appCreated
-                            ? 'تم إنشاء تطبيق «${p.name}» على سطح المكتب تلقائياً — '
-                                'ظهر أيقونة جديدة بجانب أيقونات بقية الأنظمة.'
-                            : 'لا يمكن إنشاء التطبيق محلياً الآن (يعمل عبر الخادم '
-                                'المحلي). استخدم رابط الدخول أدناه للفرع الجديد.',
+                            ? 'تم إنشاء التطبيق «${p.name}» تلقائياً داخل مجلد المسؤول '
+                                '(admin) — بجانبه ملف «بيانات الدخول» باسم المستخدم '
+                                'وكلمة السر، ويمكن نسخه ولصقه على جهاز الموظف مباشرة.'
+                            : 'الخادم المحلي غير شغال الآن (لا يمكن إنشاء التطبيق تلقائياً). '
+                                'شغّل serve_all.py على هذا الجهاز ثم اضغط «إنشاء الفرع» مرة أخرى، '
+                                'وسيُنشأ التطبيق تلقائياً داخل مجلد المسؤول بجانب ملف بيانات الدخول.',
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),
@@ -187,7 +192,7 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
               ),
               const SizedBox(height: 10),
               const Text(
-                'رابط الدخول (يعمل على الجهاز والشبكة المحلية):',
+                'رابط الدخول (يعمل من أي مكان عبر السحابة):',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
@@ -288,6 +293,12 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
     );
     if (ok != true) return;
     await BranchRegistry.instance.deleteBranch(p.id);
+    // تسجيل عملية حذف الفرع في سجل العمليات
+    AuditLogService.record(
+      AuditAction.deleteBranch,
+      details: 'حذف فرع «${p.name}» — الرمز ${p.code} (${p.id}) من السجل',
+      actor: 'مدير النظام',
+    );
     await _refresh();
   }
 

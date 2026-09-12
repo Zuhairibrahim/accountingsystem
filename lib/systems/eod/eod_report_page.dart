@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/ads/ad_service.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/database/database_service.dart';
 import '../../core/database/db_filter.dart';
+import '../../core/utils/audit_log_service.dart';
 import '../../core/utils/cross_tab.dart';
 import '../../core/utils/file_transfer.dart';
 import '../../core/utils/system_sync.dart';
@@ -224,6 +226,18 @@ class _EodReportPageState extends State<EodReportPage> {
   // ==================== إرسال التقرير (وصول تلقائي للنظام الأساسي) ====================
   Future<void> _export() async {
     final messenger = ScaffoldMessenger.of(context);
+    if (_todaySales.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'لا توجد أي بيانات اليوم لإرسالها — من الضروري إدخال '
+            'التقارير والمعاملات أولاً ثم إعادة الإرسال',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
     setState(() => _saving = true);
     final data = _buildReportJson();
     // 1) حفظ في قاعدة بيانات هذا النظام
@@ -241,6 +255,11 @@ class _EodReportPageState extends State<EodReportPage> {
     final json = const JsonEncoder.withIndent('  ').convert(data);
     final filename = 'تقرير-($_branchCode)-$_today.json'.replaceAll('/', '-');
     downloadTextFile(filename, json);
+    // تسجيل عملية إرسال التقرير في سجل العمليات (يصل للأدمن فوراً)
+    AuditLogService.record(
+      AuditAction.eodSent,
+      details: 'إرسال تقرير نهاية اليوم $_branchName — $_today',
+    );
     if (!mounted) return;
     setState(() => _saving = false);
     messenger.showSnackBar(
@@ -251,6 +270,8 @@ class _EodReportPageState extends State<EodReportPage> {
         backgroundColor: pushed ? Colors.green.shade700 : Colors.orange.shade800,
       ),
     );
+    // عرض إعلان بيني عند إتمام ترحيل التقرير
+    AdService.instance.tryShowInterstitial(source: 'eod_export');
   }
 
   Future<void> _storeLocal() async {
