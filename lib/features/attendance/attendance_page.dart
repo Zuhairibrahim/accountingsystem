@@ -10,6 +10,7 @@ import '../../core/utils/cross_tab.dart';
 import '../../core/utils/file_transfer.dart';
 import '../../core/utils/system_sync.dart';
 import '../../systems/system_config.dart';
+import '../reports/full_report_dialog.dart';
 
 /// حالات الحضور والغياب (تُخزَّن بالرمز الإنجليزي وتُعرض بالعربية)
 const List<({String key, String label})> kAttendanceStatuses = [
@@ -598,25 +599,42 @@ class _AttendancePageState extends State<AttendancePage> {
                 'تسجيل الحضور والغياب — $_dateKey',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0F172A),
-                ),
-                onPressed: _saving ? null : _saveDate,
-                icon: _saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.save, color: Colors.white),
-                label: Text(
-                  _saving ? 'جارٍ الحفظ...' : 'حفظ الحضور والغياب (مع التاريخ)',
-                  style: const TextStyle(color: Colors.white),
-                ),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF0F172A),
+                      side: const BorderSide(
+                        color: Color(0xFFCA8A04),
+                        width: 1.5,
+                      ),
+                    ),
+                    onPressed: _openAttendanceReport,
+                    icon: const Icon(Icons.summarize_outlined, size: 18),
+                    label: const Text('عرض التقارير'),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F172A),
+                    ),
+                    onPressed: _saving ? null : _saveDate,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save, color: Colors.white),
+                    label: Text(
+                      _saving ? 'جارٍ الحفظ...' : 'حفظ الحضور والغياب (مع التاريخ)',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -720,6 +738,83 @@ class _AttendancePageState extends State<AttendancePage> {
   }
 
   // ==================== زر رفع تقرير اليوم للمدير ====================
+  // ==================== التقرير الشامل للحضور والغياب (عرض + طباعة) ====================
+  Future<void> _openAttendanceReport() async {
+    final sys = SystemConfig.instance;
+    final now = DateTime.now();
+    final dateLabel =
+        '${now.year}/${now.month.toString().padLeft(2, '0')}/${now.day.toString().padLeft(2, '0')}';
+
+    final records = await _svc.getAll(
+      AppConstants.tAttendance,
+      sortDesc: ['date'],
+    );
+    final employees = await _svc.getAll(AppConstants.tEmployees);
+    final namesById = <int, String>{};
+    for (final e in employees) {
+      final id = (e['id'] as num?)?.toInt();
+      if (id != null) namesById[id] = e['name']?.toString() ?? '—';
+    }
+
+    var present = 0;
+    var absent = 0;
+    var leave = 0;
+    var late = 0;
+    final rows = <List<String>>[];
+    for (var i = 0; i < records.length; i++) {
+      final r = records[i];
+      final status = r['status']?.toString() ?? '';
+      switch (status) {
+        case 'present':
+          present++;
+        case 'absent':
+          absent++;
+        case 'leave':
+          leave++;
+        case 'late':
+          late++;
+      }
+      final empId = (r['employee_id'] as num?)?.toInt();
+      final emp = r['employee']?.toString().isNotEmpty == true
+          ? r['employee'].toString()
+          : (empId != null ? (namesById[empId] ?? '—') : '—');
+      final note = (r['note']?.toString() ?? '').trim();
+      rows.add([
+        '${i + 1}',
+        emp,
+        r['date']?.toString().isNotEmpty == true ? r['date'].toString() : '—',
+        kAttendanceLabel(status),
+        note.isEmpty ? '—' : note,
+      ]);
+    }
+
+    if (!mounted) return;
+    await showFullReportDialog(
+      context: context,
+      title: 'التقرير الشامل للحضور والغياب',
+      subtitle:
+          '${sys.systemLabel} (${sys.branchCode}) — عدد السجلات: '
+          '${records.length} — بتاريخ $dateLabel',
+      reportType: 'attendance',
+      reportTypeLabel: 'تقرير الحضور والغياب',
+      stats: [
+        ReportStat('عدد السجلات', '${records.length}', const Color(0xFF2563EB)),
+        ReportStat('أيام الحضور', '$present', const Color(0xFF16A34A)),
+        ReportStat('أيام الغياب', '$absent', const Color(0xFFDC2626)),
+        ReportStat('أيام الإجازة', '$leave', const Color(0xFFD97706)),
+        ReportStat('أيام التأخير', '$late', const Color(0xFF7C3AED)),
+      ],
+      columns: const [
+        ReportColumn('#'),
+        ReportColumn('الموظف'),
+        ReportColumn('التاريخ'),
+        ReportColumn('الحالة'),
+        ReportColumn('ملاحظة الغياب'),
+      ],
+      rows: rows,
+    );
+  }
+
   Widget _buildSendRow() {
     return Container(
       padding: const EdgeInsets.all(16),

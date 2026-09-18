@@ -1,9 +1,11 @@
-"""بناء ملفات التشغيل التنفيذية (EXE) للأنظمة + برنامج إنشاء الفرع.
+"""بناء التطبيق التنفيذي (EXE) للنظام الأساسي (الأدمن).
 
-- يولّد أيقونة مخصصة لكل نظام عبر render_icon.ps1 (تاج للأدمن، متجر للفروع،
-  علامة + لمنشئ الفروع) بحيث يظهر اسم النظام ورمزه داخل أيقونة سطح المكتب.
-- يبني كل تطبيق بأيقونته الخاصة، والتطبيق عند فتحه ينقل المستخدم تلقائياً إلى
-  Google Chrome ويفتح النظام السحابي لفرعه على Firebase.
+- يولّد أيقونة مخصصة عبر render_icon.ps1 (تاج للأدمن) بحيث يظهر اسم
+  النظام داخل أيقونة سطح المكتب.
+- التطبيق عند فتحه ينقل المستخدم تلقائياً إلى Google Chrome ويفتح النظام
+  السحابي على Firebase (كل البيانات والفروع عبر السحابة).
+- الفروع الجديدة لا تُبنى هنا: تُبنى تلقائياً عند إضافتها من الأدمن عبر
+  serve_all.py (تطبيق مستقل بأيقونة تحمل اسم الفرع داخل مجلد المسؤول).
 - المخرجات في C:/Users/PC/Desktop/admin
 """
 import os
@@ -13,19 +15,14 @@ import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT_DIR = os.path.join(os.path.expanduser('~'), 'Desktop', 'admin')
+OUT_DIR = r'C:\Users\PC\Desktop\googlgg'
 WORK_DIR = os.path.join(tempfile.gettempdir(), 'opencode', 'exe_build')
 ICON_DIR = os.path.join(WORK_DIR, 'icons')
 RENDER_PS1 = os.path.join(HERE, 'render_icon.ps1')
 
 # (اسم التطبيق, معرف النظام sys, رمز الشارة, نوع الأيقونة, لون البدء, لون النهاية)
 SYSTEMS = [
-    ('النظام الأساسي', 'admin', 'ADM-01', 'admin', '#F59E0B', '#92400E'),
-    ('فرع صنعاء', 'branch1', 'BR01', 'branch', '#0EA5E9', '#0C4A6E'),
-    ('فرع عدن', 'branch2', 'BR02', 'branch', '#10B981', '#064E3B'),
-    ('فرع تعز', 'branch3', 'BR03', 'branch', '#F472B6', '#831843'),
-    ('فرع الحديدة', 'branch4', 'BR04', 'branch', '#A78BFA', '#4C1D95'),
-    ('فرع ذمار', 'branch5', 'BR05', 'branch', '#14B8A6', '#134E4A'),
+    ('النظام الأساسي', 'admin', 'ADM-01', 'admin', '#1E3A8A', '#0B1220'),
 ]
 
 

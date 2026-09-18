@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/database/database_service.dart';
 import '../../core/widgets/barcode_scan_dialog.dart';
+import '../../systems/system_config.dart';
+import '../reports/full_report_dialog.dart';
 
 /// صفحة المنتجات: إضافة/تعديل/حذف/بحث + التقاط الباركود بالكاميرا
 class ProductsPage extends StatefulWidget {
@@ -207,6 +209,96 @@ class _ProductsPageState extends State<ProductsPage> {
     return null;
   }
 
+  // ==================== التقرير الشامل (عرض + طباعة) ====================
+  Future<void> _openFullReport() async {
+    final sys = SystemConfig.instance;
+    final now = DateTime.now();
+    final dateLabel =
+        '${now.year}/${now.month.toString().padLeft(2, '0')}/${now.day.toString().padLeft(2, '0')}';
+
+    var totalQty = 0.0;
+    var costValue = 0.0;
+    var saleValue = 0.0;
+    var outOfStock = 0;
+    var lowStock = 0;
+    final categories = <String>{};
+    final rows = <List<String>>[];
+
+    final sorted = [..._products]..sort(
+        (a, b) => (b['stock_qty'] as num? ?? 0)
+            .compareTo(a['stock_qty'] as num? ?? 0),
+      );
+
+    for (var i = 0; i < sorted.length; i++) {
+      final p = sorted[i];
+      final qty = (p['stock_qty'] as num?) ?? 0;
+      final price = (p['price'] as num?) ?? 0;
+      final sale = (p['sale_price'] as num?) ?? 0;
+      final qtyD = qty.toDouble();
+      totalQty += qtyD;
+      costValue += qtyD * price.toDouble();
+      saleValue += qtyD * sale.toDouble();
+      if (qtyD <= 0) outOfStock++;
+      if (qtyD > 0 && qtyD <= 5) lowStock++;
+      final cat = p['category']?.toString() ?? '';
+      if (cat.isNotEmpty) categories.add(cat);
+      rows.add([
+        '${i + 1}',
+        p['barcode']?.toString() ?? '-',
+        p['name']?.toString() ?? '-',
+        cat.isEmpty ? '—' : cat,
+        _num.format(price),
+        _num.format(sale),
+        qtyD % 1 == 0 ? qtyD.toStringAsFixed(0) : _num.format(qtyD),
+        _num.format(qtyD * price.toDouble()),
+        _num.format(qtyD * sale.toDouble()),
+      ]);
+    }
+
+    await showFullReportDialog(
+      context: context,
+      title: 'التقرير الشامل للمنتجات والمخزون',
+      subtitle:
+          '${sys.systemLabel} (${sys.branchCode}) — عدد المنتجات: '
+          '${_products.length} — بتاريخ $dateLabel',
+      reportType: 'products',
+      reportTypeLabel: 'تقرير المنتجات والمخزون',
+      stats: [
+        ReportStat('عدد المنتجات', '${_products.length}', const Color(0xFF2563EB)),
+        ReportStat('إجمالي الكميات المتبقية', _num.format(totalQty), const Color(0xFF7C3AED)),
+        ReportStat('قيمة المخزون (تكلفة)', _num.format(costValue), const Color(0xFFD97706)),
+        ReportStat('قيمة المخزون (بيع)', _num.format(saleValue), const Color(0xFF16A34A)),
+        ReportStat('الربح المتوقع', _num.format(saleValue - costValue), const Color(0xFF059669)),
+        ReportStat('نفد من المخزون', '$outOfStock', const Color(0xFFDC2626)),
+        ReportStat('كمية منخفضة (≤5)', '$lowStock', const Color(0xFFEA580C)),
+        ReportStat('عدد التصنيفات', '${categories.length}', const Color(0xFF0F172A)),
+      ],
+      columns: const [
+        ReportColumn('#'),
+        ReportColumn('الباركود'),
+        ReportColumn('اسم المنتج'),
+        ReportColumn('التصنيف'),
+        ReportColumn('سعر الشراء'),
+        ReportColumn('سعر البيع'),
+        ReportColumn('المتبقي'),
+        ReportColumn('قيمة التكلفة'),
+        ReportColumn('قيمة البيع'),
+      ],
+      rows: rows,
+      totalsRow: [
+        'الإجمالي',
+        '',
+        '${_products.length} منتج',
+        '${categories.length} تصنيف',
+        '',
+        '',
+        _num.format(totalQty),
+        _num.format(costValue),
+        _num.format(saleValue),
+      ],
+    );
+  }
+
   Future<void> _confirmDelete(Map<String, Object?> product) async {
     final messenger = ScaffoldMessenger.of(context);
     final ok = await showDialog<bool>(
@@ -266,6 +358,20 @@ class _ProductsPageState extends State<ProductsPage> {
                               isDense: true,
                             ),
                           ),
+                        ),
+                        const SizedBox(width: 12),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF0F172A),
+                            side: const BorderSide(
+                              color: Color(0xFFCA8A04),
+                              width: 1.5,
+                            ),
+                          ),
+                          onPressed:
+                              _products.isEmpty ? null : _openFullReport,
+                          icon: const Icon(Icons.summarize_outlined, size: 18),
+                          label: const Text('عرض التقارير'),
                         ),
                         const SizedBox(width: 12),
                         ElevatedButton.icon(

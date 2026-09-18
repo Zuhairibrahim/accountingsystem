@@ -19,22 +19,25 @@ class AccountingApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: '${SystemConfig.instance.systemLabel} — النظام المحاسبي',
-      theme: AppTheme.light,
-      locale: const Locale('ar'),
-      supportedLocales: const [Locale('ar')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: _BootstrapGate(
-        child: ValueListenableBuilder<bool>(
-          valueListenable: AuthSession.instance.isAuthenticated,
-          builder: (context, authed, _) =>
-              authed ? const HomePage() : const LoginPage(),
+    return ValueListenableBuilder<bool>(
+      valueListenable: SystemConfig.dynamicBranchReady,
+      builder: (context, _, _) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: '${SystemConfig.instance.systemLabel} — النظام المحاسبي',
+        theme: AppTheme.light,
+        locale: const Locale('ar'),
+        supportedLocales: const [Locale('ar')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: _BootstrapGate(
+          child: ValueListenableBuilder<bool>(
+            valueListenable: AuthSession.instance.isAuthenticated,
+            builder: (context, authed, _) =>
+                authed ? const HomePage() : const LoginPage(),
+          ),
         ),
       ),
     );
@@ -70,10 +73,11 @@ class _BootstrapGateState extends State<_BootstrapGate> {
     try {
       // الاتصال بـ Firebase إلزامي — لا يعمل التطبيق بدونه
       await FirebaseBootstrap.instance.initialize();
+      // جاهزية إعدادات الفروع الديناميكية يجب أن تتم قبل البذر حتى
+      // تُكتب هوية الفرع الصحيحة (اسمه وكوده المُدخلان من الأدمن).
+      await BranchRegistry.instance.ensureCurrentReady();
       // تهيئة البيانات الأولية للنظام الحالي (آمنة: تُفحص العدد أولاً)
       await DatabaseSeed.instance.ensureSeed();
-      // جاهزية إعدادات الفروع (الثابتة والديناميكية)
-      await BranchRegistry.instance.ensureCurrentReady();
       if (!mounted) return;
       setState(() => _phase = _BootstrapPhase.ready);
     } catch (e) {

@@ -64,7 +64,7 @@ void main() {
       final flat = flattenEodReport({
         'format': 'branch_end_of_day_report',
         'branch_code': 'BR01',
-        'branch_name': 'فرع صنعاء',
+        'branch_name': 'الفرع الأول',
         'system_id': 'branch1',
         'report_date': '2026-09-11',
         'generated_at': '2026-09-11T08:00:00',
@@ -86,7 +86,7 @@ void main() {
       final flat = flattenEodReport({
         'format': 'branch_attendance_report',
         'branch_code': 'BR02',
-        'branch_name': 'فرع عدن',
+        'branch_name': 'الفرع الثاني',
         'system_id': 'branch2',
         'report_date': '2026-09-11',
         'generated_at': '2026-09-11T08:00:00',

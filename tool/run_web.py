@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Multi-port launcher for the 5 accounting systems.
+"""Multi-port launcher for the accounting systems.
 
 Serves the built Flutter web app on:
   http://localhost:8080  -> admin
-  http://localhost:8081  -> branch1
-  http://localhost:8082  -> branch2
-  http://localhost:8083  -> branch3
-  http://localhost:8084  -> branch4
+  http://localhost:8080+N -> branchN (dynamic branches, if needed)
 
 Also acts as a local relay (mailbox) so branch reports reach the admin
 across different origins/ports:

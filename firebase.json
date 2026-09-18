@@ -4,7 +4,8 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/*.exe"
     ],
     "rewrites": [
       {
@@ -13,6 +14,15 @@
       }
     ],
     "headers": [
+      {
+        "source": "**/*.@(html|js|json)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
       {
         "source": "**/*.@(otf|eot|ttf|ttc|woff|woff2|png|jpg|jpeg|gif|svg|ico|webp|wasm)",
         "headers": [

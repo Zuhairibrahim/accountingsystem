@@ -1,6 +1,7 @@
 import 'package:web/web.dart' as web;
 
-/// فتح رابط في نفس التبويب (الويب فقط).
-void openLink(String url) {
-  web.window.location.href = url;
+/// فتح رابط نظام (فرع/أدمن) في نافذة تطبيق مستقلة من نفس الأصل —
+/// تفتح دائماً أحدث نسخة من هذا التطبيق مع المعامل ?sys= الصحيح.
+void openSystemWindow(String url) {
+  web.window.open(url, '_blank');
 }

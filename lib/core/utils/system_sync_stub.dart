@@ -4,8 +4,15 @@ import 'eod_sync_firestore.dart';
 Future<bool> pushReport(Map<String, Object?> payload) =>
     eodPushReport(payload);
 
-/// إنشاء تطبيق مستقل لفرع جديد — يعمل فقط مع الخادم المحلي (Web).
-Future<bool> createDesktopApp(Map<String, Object?> payload) async => false;
+/// تصدير تطبيق سطح مكتب مستقل للفرع — يعمل من نسخة الويب/سطح المكتب.
+Future<Map<String, Object?>> createDesktopApp(
+  Map<String, Object?> payload, {
+  void Function(Map<String, Object?> status)? onStatus,
+}) async => const {
+      'done': true,
+      'ok': false,
+      'message': 'تصدير التطبيق يعمل فقط من النسخة السحابية/الويب',
+    };
 
 /// قراءة كل تقارير الفروع في المجموعة المشتركة.
 Future<List<Map<String, Object?>>> fetchReports() => eodFetchReports();

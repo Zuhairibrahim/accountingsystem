@@ -24,6 +24,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // تقارير الأقسام الشاملة (منتجات/موظفين) المرسلة للنظام الأساسي
+    match /accounting_section_reports/{document=**} {
+      allow read, write: if true;
+    }
+
     // سجل العمليات المشترك (تصل لحظة عملها من كل نظام وتُفحص من لوحة الأدمن)
     match /accounting_audit_logs/{document=**} {
       allow read, write: if true;

@@ -17,10 +17,12 @@ class AuditAction {
   static const String login = 'login';
   static const String createBranch = 'create_branch';
   static const String deleteBranch = 'delete_branch';
+  static const String openBranchSystem = 'open_branch_system';
   static const String eodSent = 'eod_sent';
   static const String attendanceSent = 'attendance_sent';
   static const String importReport = 'import_report';
   static const String deleteReport = 'delete_report';
+  static const String runtimeError = 'runtime_error';
 }
 
 /// تسجيل عمليات النظام في السحابة لفحصها من لوحة تحكم الأدمن.
@@ -120,10 +122,12 @@ class AuditLogService {
         AuditAction.login => 'تسجيل دخول',
         AuditAction.createBranch => 'إنشاء فرع',
         AuditAction.deleteBranch => 'حذف فرع',
+        AuditAction.openBranchSystem => 'فتح نظام فرع',
         AuditAction.eodSent => 'إرسال تقرير نهاية اليوم',
         AuditAction.attendanceSent => 'إرسال تقرير الحضور',
         AuditAction.importReport => 'استيراد تقرير',
         AuditAction.deleteReport => 'حذف تقرير',
+        AuditAction.runtimeError => 'خطأ وقت التشغيل',
         _ => action,
       };
 }

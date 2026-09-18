@@ -32,6 +32,9 @@ dependencies:
   # مسح الباركود من كاميرا الأجهزة (يدعم الويب عبر BarcodeDetector)
   mobile_scanner: ^7.0.0
 
+  # توليد رموز QR لروابط الفروع
+  qr: ^3.0.2
+
   # Firebase (المصدر الوحيد للبيانات — سحابة)
   firebase_core: ^3.9.0
   cloud_firestore: ^5.6.0

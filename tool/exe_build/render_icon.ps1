@@ -45,13 +45,14 @@ $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
 $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
 $g.Clear([System.Drawing.Color]::Transparent)
 
-# ===== القاعدة: مربع مستدير بتدرّج لوني خاص بالفرع =====
-$m = 8
-$basePath = New-RoundRect $m $m ($S - 2 * $m) ($S - 2 * $m) 170
+# ===== القاعدة: خلفية بتدرّج لوني تملأ المربع بالكامل (بلا هامش ولا شفافية) =====
+$m = 0
 $baseBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
     (New-Object System.Drawing.Rectangle(0, 0, $S, $S)), $C1, $C2, 45
 )
-$g.FillPath($baseBrush, $basePath)
+$g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::None
+$g.FillRectangle($baseBrush, 0, 0, $S, $S)
+$g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
 
 # ===== لمعان ناعم (هالات خلفية) =====
 $glow = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(26, 255, 255, 255))
@@ -69,23 +70,42 @@ $goldBrush = New-Object System.Drawing.SolidBrush($GOLD)
 $doorBrush = New-Object System.Drawing.SolidBrush($C1)
 $gemBrush = New-Object System.Drawing.SolidBrush($C1)
 if ($Kind -eq 'admin') {
-    # تاج ذهبي متميز للأدمن
-    $cx = 256.0
-    $pts = New-Object System.Collections.Generic.List[System.Drawing.PointF]
-    $pts.Add([System.Drawing.PointF]::new(($cx - 75), 128.0))
-    $pts.Add([System.Drawing.PointF]::new(($cx - 75), 96.0))
-    $pts.Add([System.Drawing.PointF]::new(($cx - 38), 114.0))
-    $pts.Add([System.Drawing.PointF]::new(($cx), 78.0))
-    $pts.Add([System.Drawing.PointF]::new(($cx + 38), 114.0))
-    $pts.Add([System.Drawing.PointF]::new(($cx + 75), 96.0))
-    $pts.Add([System.Drawing.PointF]::new(($cx + 75), 128.0))
-    $pts.Add([System.Drawing.PointF]::new(($cx + 75), 138.0))
-    $pts.Add([System.Drawing.PointF]::new(($cx - 75), 138.0))
-    $crown = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $crown.AddPolygon([System.Drawing.PointF[]]$pts.ToArray())
-    $g.FillPath($goldBrush, $crown)
-    $g.FillRectangle($goldBrush, ($cx - 75), 126.0, 150, 14)
-    $g.FillEllipse($gemBrush, ($cx - 10), 133.0, 20, 20)
+    # الهوية الجديدة: أعمدة صاعدة ذهبية + سهم نمو على تدرج كحلي
+    $goldPen = New-Object System.Drawing.Pen($GOLD, 13)
+    $goldPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $goldPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+
+    # الأعمدة الأربعة الصاعدة (حواف دائرية)
+    $bw = 28.0; $gap = 22.0
+    $totalW = ($bw * 4) + ($gap * 3)
+    $startX = 256.0 - ($totalW / 2)
+    $baseY = 196.0
+    $heights = @(46, 80, 114, 148)
+    for ($i = 0; $i -lt 4; $i++) {
+        $h = [float]$heights[$i]
+        $x = [float]($startX + ($i * ($bw + $gap)))
+        $bar = New-RoundRect $x ([float]($baseY - $h)) ([float]$bw) $h 9
+        $g.FillPath($goldBrush, $bar)
+    }
+
+    # سهم النمو الصاعد فوق الأعمدة
+    $g.DrawArc($goldPen, [float]($startX - 16), 62.0, [float]($totalW + 32), 84.0, 200, 90)
+
+    # رأس السهم
+    $ax = [float]($startX + $totalW + 14); $ay = 82.0; $ah = 17.0
+    $apts = New-Object System.Collections.Generic.List[System.Drawing.PointF]
+    $apts.Add([System.Drawing.PointF]::new(($ax - $ah), ($ay - $ah * 1.15)))
+    $apts.Add([System.Drawing.PointF]::new(($ax + $ah * 0.95), ($ay - $ah * 0.05)))
+    $apts.Add([System.Drawing.PointF]::new(($ax - $ah * 0.35), ($ay + $ah * 1.25)))
+    $apPath = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $apPath.AddPolygon([System.Drawing.PointF[]]$apts.ToArray())
+    $g.FillPath($goldBrush, $apPath)
+
+    # خط القاعدة
+    $basePen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(140, 245, 178, 26), 7)
+    $basePen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $basePen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $g.DrawLine($basePen, [float]($startX - 18), ($baseY + 16), [float]($startX + $totalW + 18), ($baseY + 16))
 } elseif ($Kind -eq 'creator') {
     # علامة + ذهبية لمُنشئ الفروع
     $cx = 256.0

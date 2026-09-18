@@ -23,13 +23,13 @@ class BranchProfile {
     required this.themeIndex,
   });
 
-  /// التصميم الخاص بالفرع (نفس تصاميم الفروع الأساسية، تُتداول تلقائياً).
+  /// التصميم الخاص بالفرع (تصاميم محايدة، تُتداول تلقائياً).
   BranchTheme get theme {
     const themes = [
-      BranchTheme.sanaa,
-      BranchTheme.aden,
-      BranchTheme.taiz,
-      BranchTheme.hudaydah,
+      BranchTheme.design1,
+      BranchTheme.design2,
+      BranchTheme.design3,
+      BranchTheme.design4,
     ];
     return themes[themeIndex % themes.length];
   }

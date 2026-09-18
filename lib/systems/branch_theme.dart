@@ -22,8 +22,8 @@ class BranchTheme {
     icon: Icons.admin_panel_settings,
   );
 
-  /// فرع صنعاء — بنفسجي
-  static const BranchTheme sanaa = BranchTheme(
+  /// تصميم 1 — بنفسجي
+  static const BranchTheme design1 = BranchTheme(
     accent: Color(0xFF7C3AED),
     button: Color(0xFF6D28D9),
     panelGradient: [
@@ -34,8 +34,8 @@ class BranchTheme {
     icon: Icons.storefront,
   );
 
-  /// فرع عدن — فيروزي (بلحري)
-  static const BranchTheme aden = BranchTheme(
+  /// تصميم 2 — فيروزي
+  static const BranchTheme design2 = BranchTheme(
     accent: Color(0xFF0D9488),
     button: Color(0xFF0F766E),
     panelGradient: [
@@ -46,8 +46,8 @@ class BranchTheme {
     icon: Icons.storefront,
   );
 
-  /// فرع تعز — أخضر (جبل)
-  static const BranchTheme taiz = BranchTheme(
+  /// تصميم 3 — أخضر
+  static const BranchTheme design3 = BranchTheme(
     accent: Color(0xFF16A34A),
     button: Color(0xFF15803D),
     panelGradient: [
@@ -58,26 +58,14 @@ class BranchTheme {
     icon: Icons.storefront,
   );
 
-  /// فرع الحديدة — برتقالي (ميناء)
-  static const BranchTheme hudaydah = BranchTheme(
+  /// تصميم 4 — برتقالي
+  static const BranchTheme design4 = BranchTheme(
     accent: Color(0xFFEA580C),
     button: Color(0xFFC2410C),
     panelGradient: [
       Color(0xFF431407),
       Color(0xFFEA580C),
       Color(0xFF3E1A12),
-    ],
-    icon: Icons.storefront,
-  );
-
-  /// فرع ذمار — أزرق (المرتفعات)
-  static const BranchTheme dhamar = BranchTheme(
-    accent: Color(0xFF0369A1),
-    button: Color(0xFF075985),
-    panelGradient: [
-      Color(0xFF082F49),
-      Color(0xFF0369A1),
-      Color(0xFF082940),
     ],
     icon: Icons.storefront,
   );

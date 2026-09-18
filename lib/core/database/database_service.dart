@@ -140,14 +140,24 @@ class DatabaseService {
 
   // ==================== لوحة التحكم ====================
   /// حساب الإحصائيات والأرقام الحية للوحة التحكم من قاعدة البيانات الحقيقية
+  /// (كل القراءات بالتوازي — أسرع تنفيذ بدون أي انتظار متسلسل)
   Future<Map<String, dynamic>> getDashboardMetrics() async {
-    final sales = await getAll(AppConstants.tSales);
-    final purchases = await getAll(AppConstants.tPurchases);
-    final customers = await count(AppConstants.tCustomers);
-    final suppliers = await count(AppConstants.tSuppliers);
-    final products = await getAll(AppConstants.tProducts);
-    final bankRows = await getAll(AppConstants.tBankAccounts);
-    final cashRows = await getAll(AppConstants.tCashAccounts);
+    final res = await Future.wait<dynamic>([
+      getAll(AppConstants.tSales),
+      getAll(AppConstants.tPurchases),
+      count(AppConstants.tCustomers),
+      count(AppConstants.tSuppliers),
+      getAll(AppConstants.tProducts),
+      getAll(AppConstants.tBankAccounts),
+      getAll(AppConstants.tCashAccounts),
+    ]);
+    final sales = res[0] as List<Map<String, Object?>>;
+    final purchases = res[1] as List<Map<String, Object?>>;
+    final customers = res[2] as int;
+    final suppliers = res[3] as int;
+    final products = res[4] as List<Map<String, Object?>>;
+    final bankRows = res[5] as List<Map<String, Object?>>;
+    final cashRows = res[6] as List<Map<String, Object?>>;
 
     var totalSales = 0.0;
     var totalPurchases = 0.0;

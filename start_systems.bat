@@ -1,8 +1,8 @@
 @echo off
-title النظام المحاسبي - تشغيل جميع الأنظمة
+title النظام المحاسبي - تشغيل النظام الأساسي
 chcp 65001 >nul
 echo ============================================================
-echo          النظام المحاسبي - تشغيل الأنظمة الستة
+echo          النظام المحاسبي - تشغيل النظام الأساسي
 echo ============================================================
 echo.
 set "ROOT=%~dp0"
@@ -24,22 +24,13 @@ if %errorlevel%==0 (
     )
 )
 
-rem ---------- فتح كل نظام كتطبيق مستقل ----------
+rem ---------- فتح النظام الأساسي كتطبيق مستقل ----------
 start "" chrome --app="http://localhost:8080/?sys=admin"
-start "" chrome --app="http://localhost:8081/?sys=branch1"
-start "" chrome --app="http://localhost:8082/?sys=branch2"
-start "" chrome --app="http://localhost:8083/?sys=branch3"
-start "" chrome --app="http://localhost:8084/?sys=branch4"
-start "" chrome --app="http://localhost:8085/?sys=branch5"
 
-echo تم فتح الأنظمة الستة كتطبيقات مستقلة بنجاح.
+echo تم فتح النظام الأساسي كتطبيق مستقل بنجاح.
 echo.
 echo   النظام الأساسي : http://localhost:8080/
-echo   فرع صنعاء       : http://localhost:8081/
-echo   فرع عدن         : http://localhost:8082/
-echo   فرع تعز         : http://localhost:8083/
-echo   فرع الحديدة     : http://localhost:8084/
-echo   فرع ذمار         : http://localhost:8085/
+echo   (كل الفروع تُدار وتُفتح عبر السحابة من النظام الأساسي)
 echo.
 echo أبقِ هذه النافذة مفتوحة أو أغلقها - الخادم يعمل خلف الكواليس.
 timeout /t 5 /nobreak >nul

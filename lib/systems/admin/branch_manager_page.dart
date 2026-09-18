@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr/qr.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/database/database_service.dart';
+import '../../core/database/db_filter.dart';
 import '../../core/utils/audit_log_service.dart';
+import '../../core/utils/open_link.dart';
 import '../../core/utils/system_sync.dart';
 import '../../systems/branch_profile.dart';
 import '../../systems/branch_registry.dart';
@@ -58,6 +61,125 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
 
   String _linkOf(BranchProfile p) => SystemConfig.cloudUrlFor(p.id);
 
+  /// رابط نفس الأصل — يفتح نظام الفرع بأحدث نسخة من هذا التطبيق مباشرة.
+  String _localLinkOf(BranchProfile p) => '/?sys=${p.id}';
+
+  /// فتح نظام الفرع في نافذة مستقلة (نفس النسخة الحالية — بيانات Firebase).
+  void _openBranchSystem(BranchProfile p) {
+    openSystemWindow(_localLinkOf(p));
+    AuditLogService.record(
+      AuditAction.openBranchSystem,
+      details: 'فتح نظام «${p.name}» (${p.code}) من النظام الأساسي',
+      actor: 'مدير النظام',
+    );
+  }
+
+  /// عرض رمز QR لرابط الفرع — للمسح بكاميرا التلفون من أي مكان بالعالم.
+  Future<void> _showQr(BranchProfile p) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.qr_code_2_rounded, color: Color(0xFFB45309)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'رابط «${p.name}»',
+                style: const TextStyle(fontSize: 16),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE6EAF2)),
+              ),
+              child: _BranchQrView(
+                data: _linkOf(p),
+                size: 230,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'امسح الرمز بكاميرا التلفون أو أرسل الرابط — يعمل من أي مكان '
+              'في العالم ويفتح هذا الفرع بالتحديد باسمه وبيانات دخوله.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.6,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 10),
+            SelectableText(
+              _linkOf(p),
+              style: TextStyle(
+                fontSize: 11.5,
+                color: Colors.blue.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: _linkOf(p)));
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                const SnackBar(content: Text('تم نسخ الرابط')),
+              );
+            },
+            icon: const Icon(Icons.copy, size: 16),
+            label: const Text('نسخ الرابط'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('إغلاق'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// تصدير تطبيق الفرع (exe) من بطاقة الفرع — للنسخ إلى جهاز الموظف.
+  Future<void> _exportBranchApp(BranchProfile p) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await createDesktopApp(
+      {
+        'id': p.id,
+        'name': p.name,
+        'code': p.code,
+        'username': p.username,
+        'password': p.password,
+      },
+      onStatus: (_) {},
+    );
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          result['ok'] == true
+              ? 'تم تصدير تطبيق «${p.name}» — تجده في مجلد googlgg على سطح المكتب'
+              : (result['message'] as String? ?? 'تعذّر التصدير'),
+        ),
+        backgroundColor: result['ok'] == true
+            ? const Color(0xFF059669)
+            : const Color(0xFFD97706),
+      ),
+    );
+  }
+
   Future<void> _create() async {
     final name = _nameController.text.trim();
     final user = _userController.text.trim();
@@ -101,32 +223,134 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
         _branches = BranchRegistry.instance.branches;
         _codeController.text = BranchRegistry.instance.nextCode;
       });
-      // إنشاء التطبيق المستقل للفرع تلقائياً داخل مجلد المسؤول (عبر الخادم المحلي)
-      final appCreated = await createDesktopApp({
-        'id': p.id,
-        'name': p.name,
-        'code': p.code,
-        'url': _linkOf(p),
-        'username': p.username,
-        'password': p.password,
-      });
       // تسجيل عملية إنشاء الفرع في سجل العمليات (يظهر في لوحة الأدمن فوراً)
       AuditLogService.record(
         AuditAction.createBranch,
         details: 'إنشاء فرع «${p.name}» — الرمز ${p.code} (${p.id})',
         actor: 'مدير النظام',
       );
-      await _showCreated(p, appCreated: appCreated);
-    } catch (_) {
+      // إنشاء التطبيق المستقل للفرع (محلياً) مع نافذة تقدم حية —
+      // البيانات داخل التطبيق كلها عبر السحابة (Firebase).
+      final appResult = await _buildAppWithProgress(p);
+      await _showCreated(p, appResult: appResult);
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _error = 'تعذّر إنشاء الفرع. تأكد من الاتصال بالسحابة ثم أعد المحاولة.');
+      setState(() => _error = e is StateError
+          ? e.message
+          : 'تعذّر إنشاء الفرع. تأكد من الاتصال بالسحابة ثم أعد المحاولة.');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  Future<void> _showCreated(BranchProfile p, {bool appCreated = false}) async {
+  /// تصدير تطبيق الفرع (exe) مع نافذة تقدم حية
+  /// (تحميل القالب ← تجهيز ← تنزيل الملف).
+  Future<Map<String, Object?>> _buildAppWithProgress(BranchProfile p) async {
+    if (!mounted) {
+      return const {'done': true, 'ok': false, 'message': 'أُغلقت الشاشة'};
+    }
+    final step = ValueNotifier<String>('إرسال أمر التصدير...');
+    final appFuture = createDesktopApp(
+      {
+        'id': p.id,
+        'name': p.name,
+        'code': p.code,
+        'url': _linkOf(p),
+        'username': p.username,
+        'password': p.password,
+      },
+      onStatus: (st) {
+        final s = st['step'];
+        if (s is String && s.isNotEmpty && s != 'اكتمل') {
+          step.value = s;
+        }
+      },
+    );
+    final navigator = Navigator.of(context);
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        appFuture.whenComplete(() => navigator.pop());
+        return PopScope(
+          canPop: false,
+          child: ValueListenableBuilder<String>(
+            valueListenable: step,
+            builder: (ctx, s, _) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Row(
+                children: [
+                  SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  ),
+                  SizedBox(width: 12),
+                  Text('جارٍ تصدير تطبيق الفرع', style: TextStyle(fontSize: 17)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'يُصدَّر الآن تطبيق مستقل «${p.name}.exe» عبر المتصفح — '
+                    'انسخه إلى لابتوب الموظف وافتحه مباشرة، وكل البيانات '
+                    'عبر السحابة (Firebase).',
+                    style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.settings_suggest_outlined,
+                          size: 18,
+                          color: Color(0xFF0F172A),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            s,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    return appFuture;
+  }
+
+  Future<void> _showCreated(
+    BranchProfile p, {
+    required Map<String, Object?> appResult,
+  }) async {
     final link = _linkOf(p);
+    final appOk = appResult['ok'] == true;
+    final appMsg = (appResult['message'] as String?) ?? '';
+    final appPath = (appResult['path'] as String?) ?? '';
+    final isExe = appOk && appPath.toLowerCase().endsWith('.exe');
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -153,12 +377,12 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: appCreated
+                  color: appOk
                       ? const Color(0xFF16A34A).withValues(alpha: 0.08)
                       : const Color(0xFFD97706).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: appCreated
+                    color: appOk
                         ? const Color(0xFF16A34A).withValues(alpha: 0.4)
                         : const Color(0xFFD97706).withValues(alpha: 0.4),
                   ),
@@ -166,10 +390,12 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
                 child: Row(
                   children: [
                     Icon(
-                      appCreated
-                          ? Icons.desktop_windows
+                      appOk
+                          ? (isExe
+                              ? Icons.desktop_windows
+                              : Icons.link_outlined)
                           : Icons.info_outline,
-                      color: appCreated
+                      color: appOk
                           ? const Color(0xFF16A34A)
                           : const Color(0xFFD97706),
                       size: 20,
@@ -177,13 +403,16 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        appCreated
-                            ? 'تم إنشاء التطبيق «${p.name}» تلقائياً داخل مجلد المسؤول '
-                                '(admin) — بجانبه ملف «بيانات الدخول» باسم المستخدم '
-                                'وكلمة السر، ويمكن نسخه ولصقه على جهاز الموظف مباشرة.'
-                            : 'الخادم المحلي غير شغال الآن (لا يمكن إنشاء التطبيق تلقائياً). '
-                                'شغّل serve_all.py على هذا الجهاز ثم اضغط «إنشاء الفرع» مرة أخرى، '
-                                'وسيُنشأ التطبيق تلقائياً داخل مجلد المسؤول بجانب ملف بيانات الدخول.',
+                        appOk
+                            ? (isExe
+                                ? 'تم تصدير التطبيق «${p.name}.exe» — تجده في '
+                                    'مجلد googlgg على سطح المكتب. انسخه إلى '
+                                    'لابتوب الموظف وافتحه مباشرة؛ يفتح نظام '
+                                    'الفرع وكل البيانات عبر السحابة (Firebase).'
+                                : 'تم إنشاء اختصار «$p.name» — جرّب تصدير '
+                                    'التطبيق مرة أخرى من بطاقة الفرع.')
+                            : '$appMsg\nأعد تصدير التطبيق من بطاقة الفرع بعد '
+                                'التأكد من الاتصال.',
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),
@@ -217,12 +446,23 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
                       );
                     },
                   ),
+                  IconButton(
+                    tooltip: 'رمز QR للرابط',
+                    icon: const Icon(
+                      Icons.qr_code_2_rounded,
+                      size: 18,
+                      color: Color(0xFFB45309),
+                    ),
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _showQr(p);
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
-                'الرابط دائماً: https://accountingsystem-fc3f0.web.app/?sys=${p.id} '
-                'يعمل من أي مكان حتى لو كان الجهاز مطفأً.',
+                'الرابط دائماً: $link — يعمل من أي مكان حتى لو كان الجهاز مطفأً.',
                 style: const TextStyle(fontSize: 11, color: Colors.grey),
               ),
             ],
@@ -293,6 +533,19 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
     );
     if (ok != true) return;
     await BranchRegistry.instance.deleteBranch(p.id);
+    // حذف صف الفرع من جدول الفروع داخل نظام الأدمن حتى لا يبقى يتيماً
+    try {
+      final rows = await DatabaseService.instance.find(
+        AppConstants.tBranches,
+        filter: DbFilter.equals('system_id', p.id),
+      );
+      for (final row in rows) {
+        await DatabaseService.instance.delete(
+          AppConstants.tBranches,
+          (row['id'] as num).toInt(),
+        );
+      }
+    } catch (_) {}
     // تسجيل عملية حذف الفرع في سجل العمليات
     AuditLogService.record(
       AuditAction.deleteBranch,
@@ -469,9 +722,29 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'الفروع المُضافة من هنا',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              const Text(
+                'الفروع المُضافة من هنا',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 10),
+              Chip(
+                avatar: const Icon(
+                  Icons.storefront,
+                  size: 14,
+                  color: Color(0xFF0F172A),
+                ),
+                label: Text(
+                  '${_branches.length} / ${SystemConfig.maxBranches}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                backgroundColor: const Color(0xFF0F172A).withValues(alpha: 0.08),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           if (_branches.isEmpty)
@@ -545,6 +818,15 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
                 ),
               ),
               IconButton(
+                tooltip: 'رمز QR — يفتح الفرع من التلفون',
+                onPressed: () => _showQr(b),
+                icon: const Icon(
+                  Icons.qr_code_2_rounded,
+                  color: Color(0xFFB45309),
+                  size: 20,
+                ),
+              ),
+              IconButton(
                 tooltip: 'حذف من السجل',
                 onPressed: () => _delete(b),
                 icon: const Icon(
@@ -590,8 +872,94 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: color,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onPressed: () => _openBranchSystem(b),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: const Text('فتح النظام', style: TextStyle(fontSize: 12)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF0F172A),
+                    side: BorderSide(color: color.withValues(alpha: 0.5)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onPressed: () => _exportBranchApp(b),
+                  icon: const Icon(Icons.download, size: 16),
+                  label: const Text(
+                    'تصدير exe',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
+}
+
+/// رسم رمز QR لرابط الفرع — يُمسح بكاميرا التلفون فيفتح الفرع الصحيح.
+class _BranchQrView extends StatelessWidget {
+  final String data;
+  final double size;
+
+  const _BranchQrView({required this.data, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    final qr = QrCode.fromData(
+      data: data,
+      errorCorrectLevel: QrErrorCorrectLevel.M,
+    );
+    final image = QrImage(qr);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _QrPainter(image),
+      ),
+    );
+  }
+}
+
+class _QrPainter extends CustomPainter {
+  final QrImage _image;
+
+  const _QrPainter(this._image);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final count = _image.moduleCount;
+    final cell = size.width / count;
+    final paint = Paint()..color = const Color(0xFF0B1220);
+    for (var y = 0; y < count; y++) {
+      for (var x = 0; x < count; x++) {
+        if (_image.isDark(y, x)) {
+          canvas.drawRRect(
+            RRect.fromRectAndRadius(
+              Rect.fromLTWH(x * cell, y * cell, cell, cell),
+              Radius.circular(cell * 0.18),
+            ),
+            paint,
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _QrPainter oldDelegate) =>
+      oldDelegate._image != _image;
 }

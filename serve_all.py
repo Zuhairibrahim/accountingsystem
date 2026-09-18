@@ -1,47 +1,42 @@
-"""تشغيل الأنظمة بشكل احترافي (الخادم المحلي للأنظمة الثابتة).
+"""تشغيل النظام الأساسي + إنشاء تطبيقات الفروع الجديدة تلقائياً.
 
-- خدمة تطبيق الويب (Flutter build/web) على المنافذ:
+كل البيانات سحابية 100% عبر Firebase — هذا الخادم لا يخزن أي بيانات:
+- خدمة تطبيق الويب (Flutter build/web) للنظام الأساسي فقط:
     8080 -> النظام الأساسي (التحكم)   http://localhost:8080/?sys=admin
-    8081 -> فرع صنعاء                  http://localhost:8081/?sys=branch1
-    8082 -> فرع عدن                    http://localhost:8082/?sys=branch2
-    8083 -> فرع تعز                    http://localhost:8083/?sys=branch3
-    8084 -> فرع الحديدة                http://localhost:8084/?sys=branch4
-- صندوق بريد محلي (Relay) حتى تصل تقارير الفروع للنظام الأساسي فوراً:
-    POST /api/report    <- الفروع ترسل تقرير نهاية اليوم (JSON)
-    GET  /api/reports   <- النظام الأساسي يستقبل التقارير تلقائياً
-    GET  /api/ping      <- فحص جاهزية الخادم
-- إنشاء تطبيق لفرع جديد تلقائياً داخل مجلد المسؤول عند إنشائه من الأدمن:
-    POST /api/create_app <- ينشئ اختصار Windows (.lnk) يفتح الفرع كنافذة مستقلة في Chrome
+    (كل الفروع تعمل عبر السحابة — Firebase — من أي مكان)
+- الجزء المحلي الوحيد: تصدير تطبيق مستقل (EXE) لأي فرع جديد تلقائياً
+  داخل مجلد المسؤول عند إنشائه من الأدمن (بناء بالخلفية مع تتبع التقدم):
+    POST /api/create_app          <- بدء الإنشاء (يعيد build_id فوراً)
+    GET  /api/build_status?id=..  <- حالة البناء الحية (step/done/ok/path)
+                                    (واحتياطياً اختصار .lnk / ملف .url)
+    GET  /api/ping                <- فحص جاهزية الخادم
 """
 import json
 import os
 import re
+import shutil
 import socketserver
 import subprocess
 import sys
 import tempfile
 import threading
+import uuid
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 BUILD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'build', 'web')
 HOST = '0.0.0.0'
 APPS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'apps')
-RELAY_DIR = os.path.join(tempfile.gettempdir(), 'accounting_relay')
+LAUNCHER_PY = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    'tool', 'exe_build', 'launcher.py',
+)
+BRANCH_BUILD_DIR = os.path.join(tempfile.gettempdir(), 'opencode', 'branch_build')
 
-# الأنظمة الثابتة فقط (الأدمن + الفروع الأربعة الافتراضية).
-# الفروع المضافة (branch5+) تعمل عبر الرابط السحابي من أي مكان.
+# النظام الأساسي فقط — كل الفروع (حتى 50) عبر السحابة من أي مكان.
 PORTS = {
     8080: 'النظام الأساسي',
-    8081: 'فرع صنعاء',
-    8082: 'فرع عدن',
-    8083: 'فرع تعز',
-    8084: 'فرع الحديدة',
 }
 
-os.makedirs(RELAY_DIR, exist_ok=True)
-
-ADMIN_DIR = os.path.join(os.path.expanduser('~'), 'Desktop', 'admin')
-ICON_DIR = os.path.join(ADMIN_DIR, 'icons')
 RENDER_PS1 = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     'tool', 'exe_build', 'render_icon.ps1',
@@ -75,19 +70,27 @@ EDGE_CANDIDATES = [
                  'Edge', 'Application', 'msedge.exe'),
 ]
 
-# تنظيف صندوق البريد عند كل إقلاع
-for _f in os.listdir(RELAY_DIR):
-    if _f.endswith('.json'):
-        try:
-            os.remove(os.path.join(RELAY_DIR, _f))
-        except OSError:
-            pass
+WEB_ROOT = BUILD_DIR if os.path.isdir(BUILD_DIR) else os.getcwd()
 
-try:
-    WEB_ROOT = BUILD_DIR
-except Exception:
-    WEB_ROOT = os.getcwd()
+# ==================== سجل عمليات البناء (تقدم حي) ====================
+# BUILDS: build_id -> {id, sys_id, done, ok, message, path, step, started}
+BUILDS = {}
+BUILDS_LOCK = threading.Lock()
+BUILD_SEMAPHORE = threading.Semaphore(1)  # بناء واحد في كل مرة (تسريع الكاش)
 
+
+def _set_build(build_id, **fields):
+    with BUILDS_LOCK:
+        b = BUILDS.get(build_id)
+        if b is not None:
+            b.update(fields)
+
+
+def _set_step(build_id, step):
+    _set_build(build_id, step=step)
+
+
+# ==================== أدوات مساعدة ====================
 
 def _safe_name(text):
     """اسم آمن للملفات من أي نص (يدعم العربية)."""
@@ -103,7 +106,7 @@ def _desktop_path():
                 'powershell', '-NoProfile', '-Command',
                 "[Environment]::GetFolderPath('Desktop')"
             ],
-            text=True,
+            text=True, timeout=20,
         )
         path = out.strip()
         if path and os.path.isdir(path):
@@ -112,6 +115,26 @@ def _desktop_path():
         pass
     fallback = os.path.join(os.path.expanduser('~'), 'Desktop')
     return fallback if os.path.isdir(fallback) else os.path.expanduser('~')
+
+
+_ADMIN_DIR_CACHE = None
+_ADMIN_DIR_LOCK = threading.Lock()
+
+
+def _admin_dir():
+    """مجلد المسؤول على سطح المكتب الحقيقي (يُنشأ تلقائياً عند أول استخدام)."""
+    global _ADMIN_DIR_CACHE
+    with _ADMIN_DIR_LOCK:
+        if _ADMIN_DIR_CACHE is None:
+            _ADMIN_DIR_CACHE = os.path.join(_desktop_path(), 'admin')
+        os.makedirs(_ADMIN_DIR_CACHE, exist_ok=True)
+        return _ADMIN_DIR_CACHE
+
+
+def _icon_dir():
+    d = os.path.join(_admin_dir(), 'icons')
+    os.makedirs(d, exist_ok=True)
+    return d
 
 
 def _branch_number(sys_id):
@@ -140,32 +163,181 @@ def _render_branch_icon(name, code, sys_id):
     try:
         number = _branch_number(sys_id)
         c1, c2 = PALETTES[(number - 1) % len(PALETTES)]
-        meta = os.path.join(ICON_DIR, f'{sys_id}_meta.txt')
+        icon_dir = _icon_dir()  # قبل كتابة الملف — لا يفشل أول إنشاء
+        meta = os.path.join(icon_dir, f'{sys_id}_meta.txt')
         with open(meta, 'w', encoding='utf-8') as f:
             f.write('\n'.join((name, 'النظام المحاسبي', code, 'branch', c1, c2)) + '\n')
-        os.makedirs(ICON_DIR, exist_ok=True)
         if os.path.isfile(RENDER_PS1):
             subprocess.run(
                 [
                     'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
                     '-File', RENDER_PS1, '-MetaPath', meta,
-                    '-OutBase', os.path.join(ICON_DIR, sys_id),
+                    '-OutBase', os.path.join(icon_dir, sys_id),
                 ],
                 check=True, timeout=90,
             )
-        icon = os.path.join(ICON_DIR, f'{sys_id}.ico')
+        icon = os.path.join(icon_dir, f'{sys_id}.ico')
         return icon if os.path.isfile(icon) else None
     except Exception:
         return None
 
 
-def create_desktop_app(branch):
-    """إنشاء تطبيق فرع مستقل تلقائياً داخل مجلد المسؤول (C:/Users/PC/Desktop/admin).
+def _build_branch_exe(name, code, sys_id, icon, build_id=None):
+    """بناء تطبيق مستقل (EXE) مكتفٍ ذاتياً للفرع الجديد بأيقونته المخصصة.
+
+    يُضمَّن معرف النظام داخل الـ EXE نفسه (بدون أي ملفات خارجية) حتى يعمل
+    التطبيق فور فتحه على أي جهاز بعد نسخه (لابتوب الموظف) ويفتح رابط
+    السحابة الخاص بالفرع مباشرة — كل البيانات عبر Firebase.
+    يعيد مسار الـ EXE أو None عند الفشل.
+    """
+    try:
+        with BUILD_SEMAPHORE:  # بناء واحد في كل مرة (إعادة استخدام كاش PyInstaller)
+            os.makedirs(BRANCH_BUILD_DIR, exist_ok=True)
+            # نسخ المشغّل العام إلى مجلد البناء حتى يُضمَّن داخل التطبيق
+            shutil.copyfile(
+                LAUNCHER_PY,
+                os.path.join(BRANCH_BUILD_DIR, 'launcher.py'),
+            )
+            # سكربت الدخول: يحقن معرف الفرع واسمه داخل التطبيق ثم يشغّله
+            entry = os.path.join(BRANCH_BUILD_DIR, f'entry_{sys_id}.py')
+            with open(entry, 'w', encoding='utf-8') as f:
+                f.write('# -*- coding: utf-8 -*-\n')
+                f.write('import launcher\n')
+                f.write('launcher.EMBEDDED_MODE = ' + repr(sys_id) + '\n')
+                f.write('launcher.EMBEDDED_NAME = ' + repr(name) + '\n')
+                f.write('launcher.main()\n')
+            exe_name = f'app_{sys_id}'
+            cmd = [
+                sys.executable, '-m', 'PyInstaller',
+                '--onefile', '--windowed',
+                '--name', exe_name,
+                '--noconfirm',
+                '--distpath', BRANCH_BUILD_DIR,
+                '--workpath', os.path.join(BRANCH_BUILD_DIR, 'work'),
+                '--specpath', BRANCH_BUILD_DIR,
+                entry,
+            ]
+            if icon:
+                cmd.insert(4, '--icon')
+                cmd.insert(5, icon)
+            subprocess.run(cmd, check=True, timeout=300)
+            built = os.path.join(BRANCH_BUILD_DIR, exe_name + '.exe')
+            if not os.path.isfile(built):
+                return None
+            if build_id:
+                _set_step(build_id, 'نسخ التطبيق إلى مجلد المسؤول')
+            target = os.path.join(_admin_dir(), f'{name}.exe')
+            shutil.copyfile(built, target)
+            return target
+    except Exception:
+        return None
+
+
+def _make_shortcut(admin_dir, name, app_url, icon):
+    """احتياط عند تعذّر بناء الـ EXE: اختصار .lnk بنفس الأيقونة (أو .url)."""
+    browser = _find_browser()
+    if browser:
+        try:
+            shortcut = os.path.join(admin_dir, f'{name}.lnk')
+            icon_location = (icon or browser + ',0').replace('/', '\\')
+            ps_script = (
+                "$s=(New-Object -ComObject WScript.Shell).CreateShortcut("
+                + json.dumps(shortcut, ensure_ascii=False)
+                + ');'
+                + "$s.TargetPath=" + json.dumps(browser, ensure_ascii=False) + ';'
+                + "$s.Arguments=" + json.dumps(f'--app={app_url} --new-window', ensure_ascii=False) + ';'
+                + "$s.Description=" + json.dumps(f'النظام المحاسبي — {name}', ensure_ascii=False) + ';'
+                + "$s.IconLocation=" + json.dumps(icon_location, ensure_ascii=False) + ';'
+                + "$s.Save();"
+            )
+            subprocess.run(
+                ['powershell', '-NoProfile', '-Command', ps_script],
+                check=True, timeout=60,
+            )
+            if os.path.isfile(shortcut):
+                return shortcut
+        except Exception:
+            pass
+    shortcut = os.path.join(admin_dir, f'{name}.url')
+    try:
+        with open(shortcut, 'w', encoding='utf-8') as f:
+            f.write('[InternetShortcut]\r\nURL=' + app_url + '\r\n')
+        return shortcut
+    except Exception:
+        return None
+
+
+def _write_credentials_note(admin_dir, name, code, username, password, app_url):
+    """ملف «بيانات الدخول» باسم المستخدم وكلمة السر والرابط."""
+    try:
+        note = os.path.join(admin_dir, f'{name} — بيانات الدخول.txt')
+        with open(note, 'w', encoding='utf-8') as f:
+            f.write('\n'.join([
+                'النظام المحاسبي — فرع جديد',
+                '===========================',
+                'اسم الفرع: ' + name,
+                'كود الفرع: ' + code,
+                'اسم المستخدم: ' + username,
+                'كلمة السر: ' + password,
+                'رابط الدخول: ' + app_url,
+                '',
+                'التطبيق مستقل تماماً: انسخه إلى جهاز الموظف وافتحه —',
+                'يفتح نظام الفرع مباشرة وكل البيانات عبر السحابة (Firebase).',
+            ]) + '\n')
+    except Exception:
+        pass
+
+
+# ==================== إنشاء تطبيق الفرع (في الخلفية) ====================
+
+def start_desktop_app_build(branch):
+    """بدء إنشاء تطبيق فرع في الخلفية وإرجاع (build_id, started).
+
+    إن كان هناك بناء جارٍ لنفس الفرع يعيد معرّفه نفسه دون إعادة التشغيل.
+    """
+    sys_id = str(branch.get('id') or '').strip() or 'branch?'
+    with BUILDS_LOCK:
+        for b in BUILDS.values():
+            if b.get('sys_id') == sys_id and not b.get('done'):
+                return b['id'], False
+        build_id = uuid.uuid4().hex[:12]
+        BUILDS[build_id] = {
+            'id': build_id,
+            'sys_id': sys_id,
+            'done': False,
+            'ok': False,
+            'message': '',
+            'path': None,
+            'step': 'بدء الإنشاء',
+        }
+    threading.Thread(
+        target=_run_desktop_app_build,
+        args=(build_id, branch),
+        daemon=True,
+    ).start()
+    return build_id, True
+
+
+def _run_desktop_app_build(build_id, branch):
+    """منفّذ البناء في الخلفية: يحدّث الخطوات ويضمن نتيجة نهائية دائماً."""
+    try:
+        ok, msg, path = _create_desktop_app(branch, build_id)
+        _set_build(build_id, done=True, ok=ok, message=msg, path=path,
+                   step='اكتمل')
+    except Exception as exc:  # لا يترك الطلب معلقاً أبداً
+        _set_build(build_id, done=True, ok=False,
+                   message=f'فشل غير متوقع أثناء الإنشاء: {exc}',
+                   step='فشل')
+
+
+def _create_desktop_app(branch, build_id):
+    """إنشاء تطبيق فرع مستقل تلقائياً داخل مجلد المسؤول على سطح المكتب.
 
     branch: dict باسم/id/كود/رابط/اسم مستخدم/كلمة سر الخاص بالفرع.
-    ينشئ:
-    - اختصار (.lnk) يفتح الفرع في Chrome كنافذة مستقلة عبر الرابط السحابي.
-    - أيقونة مخصصة باسم الفرع داخل admin/icons.
+    الخطوات:
+    - أيقونة مخصصة تحمل اسم الفرع وكوده (render_icon.ps1).
+    - تطبيق EXE مستقل بالأيقونة يفتح رابط السحابة على أي جهاز (PyInstaller).
+    - احتياطاً عند تعذّر البناء: اختصار .lnk / ملف .url.
     - ملف «بيانات الدخول» باسم المستخدم وكلمة السر والرابط.
     يعيد (ok, message, path).
     """
@@ -178,47 +350,29 @@ def create_desktop_app(branch):
     if not app_url:
         return False, 'لا يوجد رابط للفرع', None
 
-    os.makedirs(ADMIN_DIR, exist_ok=True)
-    icon = _render_branch_icon(name, code, sys_id)
-    browser = _find_browser()
-    shortcut = os.path.join(ADMIN_DIR, f'{name}.lnk')
-    if browser:
-        icon_location = (icon or browser + ',0').replace('/', '\\')
-        ps_script = (
-            "$s=(New-Object -ComObject WScript.Shell).CreateShortcut("
-            + json.dumps(shortcut, ensure_ascii=False)
-            + ');'
-            + "$s.TargetPath=" + json.dumps(browser, ensure_ascii=False) + ';'
-            + "$s.Arguments=" + json.dumps(f'--app={app_url} --new-window', ensure_ascii=False) + ';'
-            + "$s.Description=" + json.dumps(f'النظام المحاسبي — {name} ({code})', ensure_ascii=False) + ';'
-            + "$s.IconLocation=" + json.dumps(icon_location, ensure_ascii=False) + ';'
-            + "$s.Save();"
-        )
-        subprocess.run(
-            ['powershell', '-NoProfile', '-Command', ps_script],
-            check=True, timeout=60,
-        )
-    else:
-        shortcut = os.path.join(ADMIN_DIR, f'{name}.url')
-        with open(shortcut, 'w', encoding='utf-8') as f:
-            f.write('[InternetShortcut]\r\nURL=' + app_url + '\r\n')
+    admin_dir = _admin_dir()
 
-    # ملف بيانات الدخول للفرع الجديد (اسم المستخدم + كلمة السر + الرابط)
-    note = os.path.join(ADMIN_DIR, f'{name} — بيانات الدخول.txt')
-    with open(note, 'w', encoding='utf-8') as f:
-        f.write('\n'.join([
-            'النظام المحاسبي — فرع جديد',
-            '===========================',
-            'اسم الفرع: ' + name,
-            'كود الفرع: ' + code,
-            'اسم المستخدم: ' + username,
-            'كلمة السر: ' + password,
-            'رابط الدخول: ' + app_url,
-            '',
-            'عند فتح التطبيق يتم نقلك تلقائياً إلى Google Chrome',
-            'وتسجيل الدخول باسم المستخدم وكلمة السر أعلاه.',
-        ]) + '\n')
-    return True, f'تم إنشاء تطبيق «{name}» في مجلد المسؤول', shortcut
+    # 1) أيقونة مخصصة تحمل اسم الفرع وكوده
+    _set_step(build_id, f'توليد أيقونة الفرع «{name}»')
+    icon = _render_branch_icon(name, code, sys_id)
+
+    # 2) تطبيق EXE مستقل بأيقونة الفرع — يعمل على أي جهاز بعد نسخه
+    _set_step(build_id, f'بناء تطبيق «{name}» التنفيذي (EXE)')
+    exe = _build_branch_exe(name, code, sys_id, icon, build_id)
+
+    # 3) احتياط عند تعذّر البناء: اختصار بنفس الأيقونة
+    result = exe
+    if not result:
+        _set_step(build_id, 'تعذّر بناء EXE — إنشاء اختصار احتياطي')
+        result = _make_shortcut(admin_dir, name, app_url, icon)
+
+    # 4) ملف بيانات الدخول
+    _write_credentials_note(admin_dir, name, code, username, password, app_url)
+
+    if result:
+        kind = 'تطبيق EXE' if exe else 'اختصار'
+        return True, f'تم إنشاء {kind} «{name}» في مجلد المسؤول', result
+    return False, f'تعذّر إنشاء التطبيق والاختصار لـ«{name}»', None
 
 
 class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
@@ -235,15 +389,9 @@ class SPAHandler(SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-
-    def _json(self, code, payload):
-        body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
-        self.send_response(code)
-        self._cors()
-        self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Content-Length', str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        # ضروري: يسمح للتطبيق السحابي (https) بالوصول للخادم المحلي
+        # (localhost) — بدونه يحجب المتصفح الطلب (Private Network Access)
+        self.send_header('Access-Control-Allow-Private-Network', 'true')
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -252,11 +400,20 @@ class SPAHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def _is_system_server(self):
-        # صندوق البريد وإنشاء التطبيقات يعملان فقط على خادم النظام الأساسي (8080)
+        # الوظائف الخاصة تعمل فقط على خادم النظام الأساسي (8080)
         try:
             return self.server.server_address[1] == 8080
         except Exception:
             return False
+
+    def _json(self, code, obj):
+        body = json.dumps(obj, ensure_ascii=False).encode('utf-8')
+        self.send_response(code)
+        self._cors()
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_GET(self):
         if not self._is_system_server():
@@ -265,56 +422,51 @@ class SPAHandler(SimpleHTTPRequestHandler):
         if self.path.startswith('/api/ping'):
             self._json(200, {'ok': True, 'app': 'accounting-system'})
             return
-        if self.path.startswith('/api/reports'):
-            reports = []
-            try:
-                for fn in sorted(os.listdir(RELAY_DIR)):
-                    if not fn.endswith('.json'):
-                        continue
-                    with open(os.path.join(RELAY_DIR, fn), encoding='utf-8') as f:
-                        reports.append(json.load(f))
-            except Exception:
-                pass
-            self._json(200, reports)
+        if self.path.startswith('/api/build_status'):
+            from urllib.parse import parse_qs, urlparse
+            qs = parse_qs(urlparse(self.path).query)
+            build_id = (qs.get('id') or [''])[0]
+            with BUILDS_LOCK:
+                b = BUILDS.get(build_id)
+                snap = dict(b) if b else None
+            if snap is None:
+                self._json(200, {
+                    'done': True, 'ok': False, 'step': 'غير معروف',
+                    'message': 'لا توجد عملية إنشاء بهذا المعرف '
+                               '(ربما أُعيد تشغيل الخادم)',
+                })
+            else:
+                self._json(200, snap)
             return
         if self.path.startswith('/api/'):
             self._json(404, {'ok': False, 'error': 'not found'})
             return
         super().do_GET()
 
+    def _read_body_json(self):
+        length = int(self.headers.get('Content-Length', 0) or 0)
+        raw = self.rfile.read(length).decode('utf-8') if length else ''
+        try:
+            return json.loads(raw) if raw else {}
+        except Exception:
+            return {}
+
     def do_POST(self):
         if not self._is_system_server():
             self._json(404, {'ok': False, 'error': 'not found'})
             return
-        if self.path.startswith('/api/report'):
-            length = int(self.headers.get('Content-Length', 0) or 0)
-            raw = self.rfile.read(length).decode('utf-8')
-            data = {}
-            try:
-                data = json.loads(raw)
-            except Exception:
-                pass
-            code = str(data.get('branch_code') or 'BR??')
-            date = str(data.get('report_date') or 'unknown').replace('/', '-')
-            safe = ''.join(
-                c for c in f'{code}_{date}' if c.isalnum() or c in '-_'
-            )
-            with open(
-                os.path.join(RELAY_DIR, f'{safe}.json'), 'w', encoding='utf-8'
-            ) as f:
-                json.dump(data, f, ensure_ascii=False)
-            self._json(200, {'ok': True})
-            return
         if self.path.startswith('/api/create_app'):
-            length = int(self.headers.get('Content-Length', 0) or 0)
-            raw = self.rfile.read(length).decode('utf-8')
-            branch = {}
-            try:
-                branch = json.loads(raw)
-            except Exception:
-                pass
-            ok, msg, path = create_desktop_app(branch)
-            self._json(200, {'ok': ok, 'message': msg, 'path': path})
+            branch = self._read_body_json()
+            if not str(branch.get('name') or '').strip():
+                self._json(200, {'ok': False,
+                                 'message': 'اسم الفرع مفقود في الطلب'})
+                return
+            build_id, _started = start_desktop_app_build(branch)
+            self._json(200, {
+                'ok': True,
+                'build_id': build_id,
+                'message': 'بدأ إنشاء التطبيق في الخلفية',
+            })
             return
         self._json(404, {'ok': False, 'error': 'not found'})
 

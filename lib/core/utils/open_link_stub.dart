@@ -1,2 +1,2 @@
-/// فتح رابط خارجي خارج المتصفح — لا عملية (مؤقت/غير مدعوم).
-void openLink(String url) {}
+/// فتح رابط في نافذة مستقلة — لا عملية خارج الويب.
+void openSystemWindow(String url) {}
