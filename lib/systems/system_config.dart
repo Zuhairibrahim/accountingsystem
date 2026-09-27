@@ -49,6 +49,11 @@ class SystemConfig {
   /// إعلام حذف الفرع الديناميكي الحالي من السجل (شاشة الدخول تعرض رسالة منع)
   static final ValueNotifier<bool> branchDeleted = ValueNotifier<bool>(false);
 
+  /// إعلام تعذّر تحميل إعدادات الفرع (ضعف إنترنت لحظي) — شاشة الدخول
+  /// تعرض إعادة المحاولة بدل شاشة دخول فارغة لا تعمل.
+  static final ValueNotifier<bool> dynamicBranchFailed =
+      ValueNotifier<bool>(false);
+
   /// الفروع المُضافة ديناميكياً من الأدمن
   static List<String> get allBranchModes =>
       [...branchModes, ..._dynamicProfiles.keys];
@@ -87,14 +92,21 @@ class SystemConfig {
 
   bool get isBranch => !isAdmin;
 
-  /// تحديد النظام الحالي من الرابط.
+  /// تحديد النظام الحالي من الرابط (أو من العلامة المضمّنة داخل APK).
   ///
   /// الأولوية للمعامل `sys` — يدعم الصيغة الرمزية القصيرة للفروع
   /// (`?sys=v1` تعادل `?sys=branch1` وحتى `v100`) والصيغة الكاملة معاً،
-  /// وإلا يُحدَّد النظام من رقم المنفذ (8080 → الأدمن، و8080+N → فرع branchN).
-  void init([Uri? base]) {
+  /// وإن غاب (تطبيق التلفون المثبّت) يُستخدم معرّف الفرع المضمّن في ذيل
+  /// الـ APK، وإلا يُحدَّد النظام من رقم المنفذ (8080 → الأدمن).
+  void init([Uri? base, String? embeddedMode]) {
     final uri = base ?? Uri.base;
     var arg = uri.queryParameters['sys']?.trim().toLowerCase();
+    // تطبيق التلفون (APK): المعرف مضمّن في ذيل ملف التطبيق نفسه
+    if ((arg == null || arg.isEmpty) &&
+        embeddedMode != null &&
+        embeddedMode.trim().isNotEmpty) {
+      arg = embeddedMode.trim().toLowerCase();
+    }
     if (arg != null && arg.isNotEmpty) {
       // الصيغة الرمزية: v1..v100 ← branch1..branch100 (روابط قصيرة للفروع)
       final vMatch = RegExp(r'^v(\d+)$').firstMatch(arg);
@@ -105,8 +117,9 @@ class SystemConfig {
       _mode = modeForPort(uri.hasPort ? uri.port : adminPort);
       _pendingDynamicId = '';
     }
-    // إعادة ضبط إعلام الحذف عند فتح أي نظام
+    // إعادة ضبط إعلامات الحذف/الفشل عند فتح أي نظام
     branchDeleted.value = false;
+    dynamicBranchFailed.value = false;
   }
 
   /// الاسم الظاهر للنظام

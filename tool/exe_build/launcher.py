@@ -7,16 +7,20 @@
   وأيقونة التطبيق تُولَّد مباشرة باسم الفرع المُدخل من نظام الأدمن.
 - احتياط: اسم الملف التنفيذي المعروف (النظام الأساسي) أو فتح الأدمن.
 """
+import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import time
+import urllib.request
 
 HOST = 'https://accountingsystem-fc3f0.web.app'
 
 # نسخة التطبيق لكسر الكاش القديم في المتصفح — تُرفع مع كل تحديث مهم.
-APP_VERSION = '20260918-1'
+APP_VERSION = '20260926-1'
 
 # ملف تعريف متصفح مستقل ونظيف للتطبيق — يضمن فتح أحدث نسخة من السحابة
 # دائماً (لا كاش قديم ولا Service Worker قديم من جلسات التصفح العادية).
@@ -24,12 +28,135 @@ PROFILE_DIR = os.path.expandvars(
     r'%LOCALAPPDATA%\AccountingSystem\ChromeProfile',
 )
 
-# مجلد التنزيلات الرسمي للتطبيق — كل تطبيق يُصدَّر من الأدمن يهبط هنا.
-DOWNLOAD_DIR = r'C:\Users\PC\Desktop\googlgg'
+# مجلد التنزيلات الرسمي للتطبيق — تطبيقات الفروع (EXE) داخل المجلد
+# الموحد ZuhairSystem على سطح المكتب.
+DOWNLOAD_DIR = r'C:\Users\PC\Desktop\ZuhairSystem\تطبيقات الفروع EXE'
+
+# ==================== خادم بناء التطبيقات المحلي ====================
+# تطبيق الأدمن يشغّل تلقائياً خادماً محلياً خفيفاً (serve_all.py) يقدّم
+# واجهة /api/create_app — بها تُبنى تطبيقات الفروع محلياً بأيقونة تحمل
+# اسم الفرع وتُنسخ إلى مجلد adszuhair مباشرة (البيانات كلها عبر Firebase).
+SERVER_PING = 'http://localhost:8080/api/ping'
+SERVER_DIR = os.path.expandvars(r'%LOCALAPPDATA%\AccountingSystem\server')
+
+
+def _resource(name):
+    """مسار ملف مُضمَّن داخل التطبيق (PyInstaller) أو بجانب الكود المصدري."""
+    base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, name)
+
+
+def _ping_server(timeout=1.0):
+    try:
+        with urllib.request.urlopen(SERVER_PING, timeout=timeout) as r:
+            return r.status == 200
+    except Exception:
+        return False
+
+
+def _find_python():
+    """أول مفسر بايثون متاح على الجهاز (pythonw أولاً — بلا نافذة كونسول)."""
+    for name in ('pythonw', 'python'):
+        path = shutil.which(name)
+        if path:
+            return path
+    patterns = [
+        r'C:\Python3*\pythonw.exe',
+        r'C:\Python3*\python.exe',
+        os.path.expandvars(
+            r'%LOCALAPPDATA%\Programs\Python\Python3*\pythonw.exe',
+        ),
+        os.path.expandvars(
+            r'%LOCALAPPDATA%\Programs\Python\Python3*\python.exe',
+        ),
+        os.path.join(os.environ.get('ProgramFiles', ''), 'Python3*', 'pythonw.exe'),
+        os.path.join(os.environ.get('ProgramFiles', ''), 'Python3*', 'python.exe'),
+    ]
+    for pattern in patterns:
+        for path in sorted(glob.glob(pattern), reverse=True):
+            if os.path.isfile(path):
+                return path
+    return None
+
+
+def _install_server_files():
+    """نسخ ملفات الخادم المُضمَّنة إلى مكان ثابت يستطيع بايثون تشغيله منه.
+
+    البنية المطلوبة بجانب serve_all.py (كما في المشروع الأصلي):
+        server/serve_all.py
+        server/tool/exe_build/launcher.py
+        server/tool/exe_build/render_icon.ps1
+    """
+    files = [
+        (_resource('serve_all.py'), os.path.join(SERVER_DIR, 'serve_all.py')),
+        (
+            _resource('launcher.py'),
+            os.path.join(SERVER_DIR, 'tool', 'exe_build', 'launcher.py'),
+        ),
+        (
+            _resource('render_icon.ps1'),
+            os.path.join(SERVER_DIR, 'tool', 'exe_build', 'render_icon.ps1'),
+        ),
+        (
+            _resource('template.apk'),
+            os.path.join(SERVER_DIR, 'apps', 'template.apk'),
+        ),
+    ]
+    for src, dst in files:
+        if not os.path.isfile(src):
+            return False
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        try:
+            with open(src, 'rb') as f:
+                data = f.read()
+            if not (os.path.isfile(dst) and open(dst, 'rb').read() == data):
+                with open(dst, 'wb') as f:
+                    f.write(data)
+        except Exception:
+            return False
+    return True
+
+
+def _ensure_local_server():
+    """تشغيل خادم بناء التطبيقات إن لم يكن يعمل — ثم الانتظار حتى جاهزيته."""
+    try:
+        if _ping_server():
+            return
+        if not _install_server_files():
+            return
+        python = _find_python()
+        if not python:
+            return
+        script = os.path.join(SERVER_DIR, 'serve_all.py')
+        log = open(os.path.join(SERVER_DIR, 'server.log'), 'ab')
+        env = dict(os.environ)
+        env.setdefault('PYTHONIOENCODING', 'utf-8')
+        env.setdefault('PYTHONUTF8', '1')
+        subprocess.Popen(
+            [python, script],
+            cwd=SERVER_DIR,
+            env=env,
+            stdout=log,
+            stderr=log,
+            stdin=subprocess.DEVNULL,
+            creationflags=(
+                getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+                | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)
+            ),
+            close_fds=True,
+        )
+        # انتظار الجاهزية (حتى 60 ثانية — إقلاع بايثون قد يكون بطيئاً بسبب
+        # برامج الحماية) — لا يمنع فتح التطبيق أبداً
+        for _ in range(60):
+            if _ping_server():
+                return
+            time.sleep(1.0)
+    except Exception:
+        pass  # لا يمنع فتح التطبيق أبداً
 
 
 def _setup_profile():
-    """ضبط مجلد التنزيل الافتراضي لمتصفح التطبيق على googlgg — يُنفَّذ قبل الفتح."""
+    """ضبط مجلد التنزيل الافتراضي لمتصفح التطبيق على adszuhair — قبل الفتح."""
     try:
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
         os.makedirs(PROFILE_DIR, exist_ok=True)
@@ -151,6 +278,10 @@ def _find_mode():
 def main():
     mode, label = _find_mode()
     url = f'{HOST}/?v={APP_VERSION}&sys={mode}'
+    # تطبيق الأدمن فقط: تشغيل خادم بناء تطبيقات الفروع محلياً (API) —
+    # هو الذي يبني أيقونة باسم الفرع ويصدّر التطبيق إلى مجلد adszuhair.
+    if mode == 'admin':
+        _ensure_local_server()
     _setup_profile()
     browser = _find_browser()
     if browser:

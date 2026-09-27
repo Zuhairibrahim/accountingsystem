@@ -15,7 +15,8 @@ import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT_DIR = r'C:\Users\PC\Desktop\googlgg'
+ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
+OUT_DIR = r'C:\Users\PC\Desktop\viopop admin'
 WORK_DIR = os.path.join(tempfile.gettempdir(), 'opencode', 'exe_build')
 ICON_DIR = os.path.join(WORK_DIR, 'icons')
 RENDER_PS1 = os.path.join(HERE, 'render_icon.ps1')
@@ -54,9 +55,14 @@ def _build(script, exe_name, icon_path, include_render=True):
         '--distpath', WORK_DIR,
         '--workpath', os.path.join(WORK_DIR, 'work'),
         '--specpath', WORK_DIR,
+        # ملفات خادم بناء تطبيقات الفروع (API) — يُضمَّن الخادم داخل تطبيق
+        # الأدمن فيشغّله تلقائياً عند الفتح ويبني أيقونة كل فرع باسمه.
+        '--add-data', os.path.join(ROOT, 'serve_all.py') + ';serve_all.py',
+        '--add-data', os.path.join(HERE, 'launcher.py') + ';launcher.py',
+        '--add-data', RENDER_PS1 + ';render_icon.ps1',
+        '--add-data',
+        os.path.join(ROOT, 'apps', 'template.apk') + ';template.apk',
     ]
-    if include_render:
-        cmd += ['--add-data', RENDER_PS1 + ';render_icon.ps1']
     cmd.append(os.path.join(HERE, script))
     subprocess.run(cmd, check=True)
     exe = os.path.join(WORK_DIR, exe_name + '.exe')

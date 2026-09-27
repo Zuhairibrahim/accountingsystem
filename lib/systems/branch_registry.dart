@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/constants/app_constants.dart';
@@ -82,13 +84,33 @@ class BranchRegistry {
       SystemConfig.dynamicBranchReady.value = true;
       return;
     }
-    // قراءة السجل السحابي مباشرة — إن نجحت وصادف أن الفرع غير موجود فيها
-    // فهو محذوف فعلاً؛ وإن تعذّر الوصول للسحابة لا نحكم بالحذف (نتيء المحاولة).
-    final cloudOk = await loadAll();
-    if (cloudOk && find(pendingId) == null) {
-      SystemConfig.branchDeleted.value = true;
+    // ثلاث محاولات تلقائية قبل إعلان الفشل — يتجاوز ضعف الإنترنت اللحظي
+    // حتى لا تظهر شاشة دخول فارغة أبداً عند فتح رابط فرع من أي مكان.
+    for (var attempt = 1; attempt <= 3; attempt++) {
+      final cloudOk = await loadAll();
+      if (cloudOk) {
+        // قراءة سحابية ناجحة: الفرع غير موجود فيها = محذوف فعلاً.
+        if (find(pendingId) == null) {
+          SystemConfig.branchDeleted.value = true;
+        }
+        SystemConfig.dynamicBranchFailed.value = false;
+        SystemConfig.dynamicBranchReady.value = true;
+        return;
+      }
+      if (attempt < 3) {
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+      }
     }
+    SystemConfig.dynamicBranchFailed.value = true;
     SystemConfig.dynamicBranchReady.value = true;
+  }
+
+  /// إعادة محاولة تحميل إعدادات الفرع الحالي (زر «إعادة المحاولة»).
+  Future<void> retryDynamicBranch() {
+    SystemConfig.dynamicBranchReady.value = false;
+    SystemConfig.dynamicBranchFailed.value = false;
+    SystemConfig.branchDeleted.value = false;
+    return ensureCurrentReady();
   }
 
   /// تحميل كل الفروع المسجلة من السحابة (Firestore فقط — لا كاش محلي).
@@ -157,16 +179,18 @@ class BranchRegistry {
     return profile;
   }
 
-  /// حذف فرع ديناميكي من السجل (السحابة + شجرة بياناته كاملة)
+  /// حذف فرع فوري: يُشطب من السجل لحظياً (تطبيق الموظف يُغلق فوراً
+  /// بشاشة «تم حذف الفرع») ثم تُمسح شجرة بياناته بالكامل في الخلفية
+  /// دون إبطاء واجهة الأدمن إطلاقاً.
   Future<void> deleteBranch(String id) async {
     final profile = find(id);
     _branches = [for (final b in _branches) if (b.id != id) b];
     SystemConfig.registerDynamicProfiles(_branches);
     await _ensureFirebase();
     await FirebaseFirestore.instance.collection(collection).doc(id).delete();
-    // مسح كامل: شجرة بيانات النظام + تقاريره السابقة حتى لا تبقى يتيمة
+    // مسح شجرة البيانات + التقارير بالخلفية — لا يُنتظر (الحذف فوري)
     if (profile != null) {
-      await _wipeLegacySystem(id, profile.code);
+      unawaited(_wipeLegacySystem(id, profile.code));
     }
   }
 

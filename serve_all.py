@@ -20,6 +20,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import uuid
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
@@ -31,6 +32,17 @@ LAUNCHER_PY = os.path.join(
     'tool', 'exe_build', 'launcher.py',
 )
 BRANCH_BUILD_DIR = os.path.join(tempfile.gettempdir(), 'opencode', 'branch_build')
+
+# قالب تطبيق التلفون (APK) — يُلحق معرّف الفرع بذيله ثم يُعاد توقيعه
+APK_TEMPLATE = os.path.join(APPS_DIR, 'template.apk')
+
+# مفتاح توقيع تطبيقات التلفون (نفس مفتاح بناء القالب — debug keystore)
+APK_KEYSTORE = os.path.join(
+    os.path.expanduser('~'), '.android', 'debug.keystore',
+)
+
+# المجلد الموحد على سطح المكتب: المشروع + تطبيقات الفروع المصدَّرة
+UNIFIED_DIR_NAME = 'ZuhairSystem'
 
 # النظام الأساسي فقط — كل الفروع (حتى 50) عبر السحابة من أي مكان.
 PORTS = {
@@ -70,7 +82,14 @@ EDGE_CANDIDATES = [
                  'Edge', 'Application', 'msedge.exe'),
 ]
 
-WEB_ROOT = BUILD_DIR if os.path.isdir(BUILD_DIR) else os.getcwd()
+# وضع مزدوج:
+# - يوجد build/web  ← يُقدَّم تطبيق الويب محلياً أيضاً (سير العمل المحلي).
+# - لا يوجد build/web ← وضع «بناء التطبيقات فقط»: لا يُقدَّم أي ملفات،
+#   فقط واجهة /api/* (هكذا يعمل الخادم المُضمَّن داخل تطبيق الأدمن EXE
+#   على أي جهاز حتى بدون مجلد build).
+WEB_ROOT = BUILD_DIR if os.path.isdir(BUILD_DIR) else os.path.join(
+    tempfile.gettempdir(), 'opencode', 'empty_web_root',
+)
 
 # ==================== سجل عمليات البناء (تقدم حي) ====================
 # BUILDS: build_id -> {id, sys_id, done, ok, message, path, step, started}
@@ -122,11 +141,17 @@ _ADMIN_DIR_LOCK = threading.Lock()
 
 
 def _admin_dir():
-    """مجلد المسؤول على سطح المكتب الحقيقي (يُنشأ تلقائياً عند أول استخدام)."""
+    r"""مجلد المسؤول على سطح المكتب الحقيقي (يُنشأ تلقائياً عند أول استخدام).
+
+    كل تطبيقات الفروع (EXE) تُصدَّر داخل المجلد الموحد على سطح المكتب:
+    Desktop\ZuhairSystem\تطبيقات الفروع EXE
+    """
     global _ADMIN_DIR_CACHE
     with _ADMIN_DIR_LOCK:
         if _ADMIN_DIR_CACHE is None:
-            _ADMIN_DIR_CACHE = os.path.join(_desktop_path(), 'admin')
+            _ADMIN_DIR_CACHE = os.path.join(
+                _desktop_path(), UNIFIED_DIR_NAME, 'تطبيقات الفروع EXE',
+            )
         os.makedirs(_ADMIN_DIR_CACHE, exist_ok=True)
         return _ADMIN_DIR_CACHE
 
@@ -135,6 +160,87 @@ def _icon_dir():
     d = os.path.join(_admin_dir(), 'icons')
     os.makedirs(d, exist_ok=True)
     return d
+
+
+def _apk_dir():
+    """مجلد تصدير تطبيقات التلفون (APK) داخل المجلد الموحد."""
+    d = os.path.join(
+        _desktop_path(), UNIFIED_DIR_NAME, 'تطبيقات الفروع APK',
+    )
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _find_apksigner():
+    """أول apksigner متاح من أدوات البناء (SDK)."""
+    candidates = []
+    for sdk in (
+        os.environ.get('ANDROID_HOME', ''),
+        r'C:\Android\Sdk',
+        os.path.expandvars(r'%LOCALAPPDATA%\Android\Sdk'),
+    ):
+        if sdk:
+            candidates += [
+                os.path.join(sdk, 'build-tools', '*', 'apksigner.bat'),
+            ]
+    import glob as _glob
+    for pattern in candidates:
+        for path in sorted(_glob.glob(pattern), reverse=True):
+            if os.path.isfile(path):
+                return path
+    return None
+
+
+def _patch_apk_marker(dst, sys_id):
+    """نسخ قالب APK بمعرّف الفرع: إلحاق العلامة بذيل الأرشيف كتعليق ZIP
+    ثم إعادة التوقيع (v2/v3) بنفس مفتاح القالب — يبقى التطبيق قابلاً
+    للتثبيت على أي تلفون، ويقرأ العلامة من ملفه عند الإقلاع.
+    """
+    import struct
+    with open(APK_TEMPLATE, 'rb') as f:
+        data = bytearray(f.read())
+    eocd = data.rfind(b'PK\x05\x06', max(0, len(data) - 22 - 65535))
+    if eocd < 0:
+        return False
+    (comment_len,) = struct.unpack_from('<H', data, eocd + 20)
+    if eocd + 22 + comment_len != len(data):
+        return False  # القالب يحمل تعليقاً أصلاً — لا نعبث به
+    payload = f'@@ZSYS={sys_id}@@'.encode('utf-8')
+    struct.pack_into('<H', data, eocd + 20, len(payload))
+    unsigned = dst + '.unsigned'
+    with open(unsigned, 'wb') as f:
+        f.write(bytes(data))
+        f.write(payload)
+    # إعادة التوقيع — بدونها يفشل تثبيت التطبيق (توقيع v2 يشمل EOCD)
+    apksigner = _find_apksigner()
+    if not apksigner or not os.path.isfile(APK_KEYSTORE):
+        os.remove(unsigned)
+        return False
+    try:
+        subprocess.run(
+            [
+                apksigner, 'sign',
+                '--ks', APK_KEYSTORE,
+                '--ks-key-alias', 'androiddebugkey',
+                '--ks-pass', 'pass:android',
+                '--key-pass', 'pass:android',
+                '--out', dst, unsigned,
+            ],
+            check=True, timeout=180,
+            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+        )
+    except Exception:
+        try:
+            os.remove(unsigned)
+        except OSError:
+            pass
+        try:
+            os.remove(dst)
+        except OSError:
+            pass
+        return False
+    os.remove(unsigned)
+    return os.path.isfile(dst)
 
 
 def _branch_number(sys_id):
@@ -158,28 +264,42 @@ def _find_browser():
     return None
 
 
+# قفل توليد الأيقونات — يمنع تعارض استدعاءات PowerShell المتزامنة
+ICON_LOCK = threading.Lock()
+
+
 def _render_branch_icon(name, code, sys_id):
-    """توليد أيقونة مخصصة لاسم الفرع الجديد (تُحفظ في مجلد المسؤول/icons)."""
-    try:
-        number = _branch_number(sys_id)
-        c1, c2 = PALETTES[(number - 1) % len(PALETTES)]
-        icon_dir = _icon_dir()  # قبل كتابة الملف — لا يفشل أول إنشاء
-        meta = os.path.join(icon_dir, f'{sys_id}_meta.txt')
-        with open(meta, 'w', encoding='utf-8') as f:
-            f.write('\n'.join((name, 'النظام المحاسبي', code, 'branch', c1, c2)) + '\n')
-        if os.path.isfile(RENDER_PS1):
-            subprocess.run(
-                [
-                    'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
-                    '-File', RENDER_PS1, '-MetaPath', meta,
-                    '-OutBase', os.path.join(icon_dir, sys_id),
-                ],
-                check=True, timeout=90,
-            )
-        icon = os.path.join(icon_dir, f'{sys_id}.ico')
-        return icon if os.path.isfile(icon) else None
-    except Exception:
-        return None
+    """توليد أيقونة مخصصة لاسم الفرع الجديد (تُحفظ في مجلد المسؤول/icons).
+
+    محمي بقفل + محاولتان — استدعاءات متزامنة سابقة أفشلت بعض التوليدات.
+    """
+    for _attempt in (1, 2):
+        try:
+            with ICON_LOCK:
+                number = _branch_number(sys_id)
+                c1, c2 = PALETTES[(number - 1) % len(PALETTES)]
+                icon_dir = _icon_dir()  # قبل كتابة الملف — لا يفشل أول إنشاء
+                meta = os.path.join(icon_dir, f'{sys_id}_meta.txt')
+                with open(meta, 'w', encoding='utf-8') as f:
+                    f.write(
+                        '\n'.join((name, 'النظام المحاسبي', code, 'branch', c1, c2))
+                        + '\n',
+                    )
+                if os.path.isfile(RENDER_PS1):
+                    subprocess.run(
+                        [
+                            'powershell', '-NoProfile', '-ExecutionPolicy',
+                            'Bypass', '-File', RENDER_PS1, '-MetaPath', meta,
+                            '-OutBase', os.path.join(icon_dir, sys_id),
+                        ],
+                        check=True, timeout=90,
+                    )
+                icon = os.path.join(icon_dir, f'{sys_id}.ico')
+                if os.path.isfile(icon):
+                    return icon
+        except Exception:
+            continue
+    return None
 
 
 def _build_branch_exe(name, code, sys_id, icon, build_id=None):
@@ -281,8 +401,13 @@ def _write_credentials_note(admin_dir, name, code, username, password, app_url):
                 'كلمة السر: ' + password,
                 'رابط الدخول: ' + app_url,
                 '',
-                'التطبيق مستقل تماماً: انسخه إلى جهاز الموظف وافتحه —',
-                'يفتح نظام الفرع مباشرة وكل البيانات عبر السحابة (Firebase).',
+                'تطبيقان لكل فرع (داخل مجلد ZuhairSystem على سطح المكتب):',
+                '  - الابتوب: تطبيقات الفروع EXE',
+                '  - التلفون: تطبيقات الفروع APK — ثبّته مع السماح',
+                '    بالمصادر غير المعروفة.',
+                '',
+                'التطبيقان مستقلان تماماً: انسخهما إلى جهاز الموظف وافتحهما —',
+                'يفتحان نظام الفرع مباشرة وكل البيانات عبر السحابة (Firebase).',
             ]) + '\n')
     except Exception:
         pass
@@ -337,6 +462,7 @@ def _create_desktop_app(branch, build_id):
     الخطوات:
     - أيقونة مخصصة تحمل اسم الفرع وكوده (render_icon.ps1).
     - تطبيق EXE مستقل بالأيقونة يفتح رابط السحابة على أي جهاز (PyInstaller).
+    - تطبيق APK للتلفون من القالب الموقّع بمعرّف الفرع (فوري — دون بناء).
     - احتياطاً عند تعذّر البناء: اختصار .lnk / ملف .url.
     - ملف «بيانات الدخول» باسم المستخدم وكلمة السر والرابط.
     يعيد (ok, message, path).
@@ -366,12 +492,28 @@ def _create_desktop_app(branch, build_id):
         _set_step(build_id, 'تعذّر بناء EXE — إنشاء اختصار احتياطي')
         result = _make_shortcut(admin_dir, name, app_url, icon)
 
-    # 4) ملف بيانات الدخول
+    # 4) تطبيق التلفون (APK) — نسخ فوري من القالب بمعرّف الفرع
+    apk_path = None
+    if os.path.isfile(APK_TEMPLATE):
+        _set_step(build_id, f'تجهيز تطبيق التلفون «{name}» (APK)')
+        try:
+            target_apk = os.path.join(_apk_dir(), f'{name}.apk')
+            if _patch_apk_marker(target_apk, sys_id):
+                apk_path = target_apk
+        except Exception:
+            apk_path = None
+    if build_id:
+        _set_build(build_id, apk_path=apk_path)
+
+    # 5) ملف بيانات الدخول
     _write_credentials_note(admin_dir, name, code, username, password, app_url)
 
     if result:
         kind = 'تطبيق EXE' if exe else 'اختصار'
-        return True, f'تم إنشاء {kind} «{name}» في مجلد المسؤول', result
+        message = f'تم إنشاء {kind} «{name}» داخل مجلد ZuhairSystem'
+        if apk_path:
+            message += ' مع تطبيق التلفون (APK)'
+        return True, message, result
     return False, f'تعذّر إنشاء التطبيق والاختصار لـ«{name}»', None
 
 
@@ -484,9 +626,14 @@ def start_server(port, name):
 
 
 if __name__ == '__main__':
-    if not os.path.isdir(BUILD_DIR):
-        print('Build directory not found: %s' % BUILD_DIR)
-        sys.exit(1)
+    # إخراج UTF-8 دائماً — يمنع انكسار الطباعة العربية عندما يعمل
+    # الخادم مخفياً/بلا كونسول (من تطبيق الأدمن EXE) أو بترميز محلي قديم.
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+    os.makedirs(WEB_ROOT, exist_ok=True)
 
     threads = []
     for port, name in PORTS.items():
@@ -505,6 +652,6 @@ if __name__ == '__main__':
 
     try:
         while True:
-            pass
+            time.sleep(3600)
     except KeyboardInterrupt:
         print('\nجاري إيقاف جميع الأنظمة...')

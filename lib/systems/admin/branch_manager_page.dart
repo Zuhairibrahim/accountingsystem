@@ -161,6 +161,7 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
         'id': p.id,
         'name': p.name,
         'code': p.code,
+        'url': _linkOf(p),
         'username': p.username,
         'password': p.password,
       },
@@ -170,7 +171,7 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
       SnackBar(
         content: Text(
           result['ok'] == true
-              ? 'تم تصدير تطبيق «${p.name}» — تجده في مجلد googlgg على سطح المكتب'
+              ? 'تم تصدير تطبيق «${p.name}» — داخل مجلد ZuhairSystem على سطح المكتب'
               : (result['message'] as String? ?? 'تعذّر التصدير'),
         ),
         backgroundColor: result['ok'] == true
@@ -296,9 +297,10 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'يُصدَّر الآن تطبيق مستقل «${p.name}.exe» عبر المتصفح — '
-                    'انسخه إلى لابتوب الموظف وافتحه مباشرة، وكل البيانات '
-                    'عبر السحابة (Firebase).',
+                    'يُصدَّر الآن تطبيقان مستقلان لفرع «${p.name}»: تطبيق الابتوب '
+                    'EXE بأيقونة تحمل اسمه، وتطبيق التلفون APK — كلاهما داخل '
+                    'مجلد ZuhairSystem على سطح المكتب، وكل البيانات عبر '
+                    'السحابة (Firebase).',
                     style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700),
                   ),
                   const SizedBox(height: 14),
@@ -350,6 +352,7 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
     final appOk = appResult['ok'] == true;
     final appMsg = (appResult['message'] as String?) ?? '';
     final appPath = (appResult['path'] as String?) ?? '';
+    final apkPath = (appResult['apk'] as String?) ?? '';
     final isExe = appOk && appPath.toLowerCase().endsWith('.exe');
     await showDialog<void>(
       context: context,
@@ -405,10 +408,11 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
                       child: Text(
                         appOk
                             ? (isExe
-                                ? 'تم تصدير التطبيق «${p.name}.exe» — تجده في '
-                                    'مجلد googlgg على سطح المكتب. انسخه إلى '
-                                    'لابتوب الموظف وافتحه مباشرة؛ يفتح نظام '
-                                    'الفرع وكل البيانات عبر السحابة (Firebase).'
+                                ? 'تم تصدير التطبيق «${p.name}.exe» بأيقونته '
+                                    'الخاصة — داخل مجلد ZuhairSystem على سطح '
+                                    'المكتب. انسخه إلى لابتوب الموظف وافتحه '
+                                    'مباشرة؛ يفتح نظام الفرع باسمه وبيانات '
+                                    'دخوله وكل البيانات عبر السحابة (Firebase).'
                                 : 'تم إنشاء اختصار «$p.name» — جرّب تصدير '
                                     'التطبيق مرة أخرى من بطاقة الفرع.')
                             : '$appMsg\nأعد تصدير التطبيق من بطاقة الفرع بعد '
@@ -420,6 +424,38 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
                 ),
               ),
               const SizedBox(height: 10),
+              // بطاقة تطبيق التلفون (APK)
+              if (appOk && apkPath.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.smartphone,
+                        color: Color(0xFF2563EB),
+                        size: 20,
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'تطبيق التلفون «APK» — داخل مجلد ZuhairSystem على سطح '
+                          'المكتب. انقله للتلفون وثبّته (اسمح بالتثبيت من '
+                          'مصادر غير معروفة)؛ يفتح نظام هذا الفرع بالتحديد.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
               const Text(
                 'رابط الدخول (يعمل من أي مكان عبر السحابة):',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
@@ -513,8 +549,9 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
       builder: (ctx) => AlertDialog(
         title: const Text('حذف الفرع في'),
         content: Text(
-          'هل تريد حذف "${p.name}" (${p.code}) من السجل؟\n'
-          'لن يُحذف أي بيانات سابقة، لكن لن يُعتدّ بالفرع كنظام جديد.',
+          'هل تريد حذف "${p.name}" (${p.code})؟\n'
+          'يُحذف الفرع فوراً من السجل ويُغلق تطبيقه عند الموظف مباشرة، '
+          'وتُمسح كل بياناته بالكامل في الخلفية.',
         ),
         actions: [
           TextButton(

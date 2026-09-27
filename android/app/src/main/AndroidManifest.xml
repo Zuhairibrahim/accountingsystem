@@ -2,7 +2,7 @@
     <!-- AdMob: مطلوب للاتصال بخوادم الإعلانات -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="accountingsystem"
+        android:label="النظام المحاسبي"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <!-- AdMob App ID (بني-برناروة) -->

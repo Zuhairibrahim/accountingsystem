@@ -2,6 +2,7 @@
 
 import '../../core/auth/auth_session.dart';
 import '../../core/utils/audit_log_service.dart';
+import '../../systems/branch_registry.dart';
 import '../../systems/branch_theme.dart';
 import '../../systems/system_config.dart';
 
@@ -85,6 +86,9 @@ class _LoginPageState extends State<LoginPage> {
         final sys = SystemConfig.instance;
         if (sys.pendingDynamicId.isNotEmpty && !ready) {
           return _buildPreparing();
+        }
+        if (SystemConfig.dynamicBranchFailed.value) {
+          return _buildBranchLoadFailed();
         }
         if (SystemConfig.branchDeleted.value) {
           return _buildDeletedBranch();
@@ -791,6 +795,103 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  // ==================== شاشة تعذر تحميل إعدادات الفرع ====================
+  Widget _buildBranchLoadFailed() {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: _kNavy1,
+        body: _DarkBackdrop(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(28),
+              child: Container(
+                width: 520,
+                padding: const EdgeInsets.all(36),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: 60,
+                      offset: const Offset(0, 26),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBEB),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFFDE68A)),
+                      ),
+                      child: const Icon(
+                        Icons.cloud_off_rounded,
+                        color: Color(0xFFD97706),
+                        size: 42,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'تعذّر تحميل إعدادات الفرع',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'لم يستطع النظام الوصول للسحابة (Firebase) لتجهيز هذا '
+                      'الفرع. تحقق من اتصال الإنترنت ثم أعد المحاولة — '
+                      'الفرع يعمل من أي مكان في العالم بمجرد توفر الاتصال.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        height: 1.8,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFB45309),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () =>
+                            BranchRegistry.instance.retryDynamicBranch(),
+                        icon: const Icon(Icons.refresh_rounded, size: 20),
+                        label: const Text(
+                          'إعادة المحاولة',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ==================== شاشة الفرع المحذوف ====================
   Widget _buildDeletedBranch() {
     return Directionality(
@@ -836,7 +937,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'تم حذف هذا الفرع من السجل',
+                      'تم حذف الفرع',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 21,
@@ -846,8 +947,8 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'عذراً، تم حذف هذا الفرع بنجاح من قبل مدير النظام '
-                      'زهير ابن إبراهيم القحطاني، ولا يمكن الدخول إلى نظامه بعد الآن.',
+                      'تم حذف الفرع من قبل عمك زهير بن ابراهيم القحطاني '
+                      'ولا يمكن الدخول إلى هذا النظام بعد الآن.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13.5,
