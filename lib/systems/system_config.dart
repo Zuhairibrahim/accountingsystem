@@ -150,14 +150,24 @@ class SystemConfig {
   BranchTheme get theme => themeOf(_mode);
 
   // ==================== بيانات الدخول لكل نظام ====================
-  /// بيانات الدخول: الأدمن ثابتة، وكل فرع من ملف تعريفه الديناميكي فقط
-  /// (الاسم/اليوزر/كلمة السر المُدخلة من الأدمن عند إنشاء الفرع) —
-  /// لا توجد أي بيانات دخول فروع مضمّنة في الكود إطلاقاً.
+  /// بيانات دخول الأدمن الافتراضية (تُستخدم قبل تغييرها من «حساب الأدمن»)
+  static const ({String username, String password}) defaultAdminCredentials = (
+    username: 'admin zuhair',
+    password: '!Yemen.com0510',
+  );
+
+  /// بيانات دخول الأدمن المخصصة (تُحمَّل من السحابة وتُحدَّث من قسم
+  /// «حساب الأدمن») — null يعني القيم الافتراضية المضمّنة.
+  static ({String username, String password})? customAdminCredentials;
+
+  /// بيانات الدخول: الأدمن من السحابة (أو الافتراضية)، وكل فرع من ملف
+  /// تعريفه الديناميكي فقط (الاسم/اليوزر/كلمة السر المُدخلة من الأدمن
+  /// عند إنشاء الفرع) — لا توجد أي بيانات دخول فروع مضمّنة في الكود إطلاقاً.
   static ({String username, String password}) credentialsOf(String mode) {
     final p = _dynamicProfiles[mode];
     if (p != null) return (username: p.username, password: p.password);
     return switch (mode) {
-      adminMode => (username: 'admin zuhair', password: '!Yemen.com0510'),
+      adminMode => customAdminCredentials ?? defaultAdminCredentials,
       _ => (username: '', password: ''),
     };
   }

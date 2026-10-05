@@ -23,6 +23,7 @@ class AuditAction {
   static const String importReport = 'import_report';
   static const String deleteReport = 'delete_report';
   static const String runtimeError = 'runtime_error';
+  static const String changeCredentials = 'change_credentials';
 }
 
 /// تسجيل عمليات النظام في السحابة لفحصها من لوحة تحكم الأدمن.
@@ -128,6 +129,7 @@ class AuditLogService {
         AuditAction.importReport => 'استيراد تقرير',
         AuditAction.deleteReport => 'حذف تقرير',
         AuditAction.runtimeError => 'خطأ وقت التشغيل',
+        AuditAction.changeCredentials => 'تغيير بيانات الدخول',
         _ => action,
       };
 }

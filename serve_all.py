@@ -1,14 +1,18 @@
-"""تشغيل النظام الأساسي + إنشاء تطبيقات الفروع الجديدة تلقائياً.
+r"""تشغيل النظام الأساسي + إنشاء تطبيقات الفروع الجديدة تلقائياً.
 
 كل البيانات سحابية 100% عبر Firebase — هذا الخادم لا يخزن أي بيانات:
 - خدمة تطبيق الويب (Flutter build/web) للنظام الأساسي فقط:
     8080 -> النظام الأساسي (التحكم)   http://localhost:8080/?sys=admin
     (كل الفروع تعمل عبر السحابة — Firebase — من أي مكان)
-- الجزء المحلي الوحيد: تصدير تطبيق مستقل (EXE) لأي فرع جديد تلقائياً
-  داخل مجلد المسؤول عند إنشائه من الأدمن (بناء بالخلفية مع تتبع التقدم):
+- الجزء المحلي الوحيد: تصدير تطبيقين مستقلين (EXE + APK) لأي فرع جديد
+  تلقائياً داخل مجلد خاص باسم الفرع على سطح المكتب عند إنشائه من
+  الأدمن (بناء بالخلفية مع تتبع التقدم):
+    Desktop\ZuhairSystem\التطبيقات\{اسم الفرع}\
+        ├── {اسم الفرع}.exe   (لابتوب — بأيقونة باسم الفرع)
+        ├── {اسم الفرع}.apk   (تلفون — بمعرّف الفرع المضمّن)
+        └── بيانات الدخول.txt
     POST /api/create_app          <- بدء الإنشاء (يعيد build_id فوراً)
     GET  /api/build_status?id=..  <- حالة البناء الحية (step/done/ok/path)
-                                    (واحتياطياً اختصار .lnk / ملف .url)
     GET  /api/ping                <- فحص جاهزية الخادم
 """
 import json
@@ -41,7 +45,11 @@ APK_KEYSTORE = os.path.join(
     os.path.expanduser('~'), '.android', 'debug.keystore',
 )
 
-# المجلد الموحد على سطح المكتب: المشروع + تطبيقات الفروع المصدَّرة
+# المجلد الموحد على سطح المكتب: كل تطبيقات النظام (الأدمن + الفروع)
+# داخل مجلد واحد، وكل تطبيق في مجلد فرعي خاص باسمه:
+#   Desktop\ZuhairSystem\التطبيقات\
+#       ├── النظام الأساسي\   (تطبيق الأدمن)
+#       └── فرع ...\          (EXE + APK + بيانات الدخول)
 UNIFIED_DIR_NAME = 'ZuhairSystem'
 
 # النظام الأساسي فقط — كل الفروع (حتى 50) عبر السحابة من أي مكان.
@@ -136,37 +144,39 @@ def _desktop_path():
     return fallback if os.path.isdir(fallback) else os.path.expanduser('~')
 
 
-_ADMIN_DIR_CACHE = None
-_ADMIN_DIR_LOCK = threading.Lock()
+_APPS_ROOT_CACHE = None
+_APPS_ROOT_LOCK = threading.Lock()
 
 
-def _admin_dir():
-    r"""مجلد المسؤول على سطح المكتب الحقيقي (يُنشأ تلقائياً عند أول استخدام).
+def _apps_root():
+    r"""المجلد الموحد لكل تطبيقات النظام على سطح المكتب الحقيقي.
 
-    كل تطبيقات الفروع (EXE) تُصدَّر داخل المجلد الموحد على سطح المكتب:
-    Desktop\ZuhairSystem\تطبيقات الفروع EXE
+    كل التطبيقات (الأدمن + الفروع) داخل مجلد واحد، وكل تطبيق في
+    مجلد فرعي خاص باسمه:
+        Desktop\ZuhairSystem\التطبيقات\
+            ├── النظام الأساسي\   (تطبيق الأدمن EXE)
+            ├── فرع صنعاء\        (EXE + APK + بيانات الدخول)
+            └── ...
     """
-    global _ADMIN_DIR_CACHE
-    with _ADMIN_DIR_LOCK:
-        if _ADMIN_DIR_CACHE is None:
-            _ADMIN_DIR_CACHE = os.path.join(
-                _desktop_path(), UNIFIED_DIR_NAME, 'تطبيقات الفروع EXE',
+    global _APPS_ROOT_CACHE
+    with _APPS_ROOT_LOCK:
+        if _APPS_ROOT_CACHE is None:
+            _APPS_ROOT_CACHE = os.path.join(
+                _desktop_path(), UNIFIED_DIR_NAME, 'التطبيقات',
             )
-        os.makedirs(_ADMIN_DIR_CACHE, exist_ok=True)
-        return _ADMIN_DIR_CACHE
+        os.makedirs(_APPS_ROOT_CACHE, exist_ok=True)
+        return _APPS_ROOT_CACHE
 
 
-def _icon_dir():
-    d = os.path.join(_admin_dir(), 'icons')
+def _branch_dir(name):
+    """مجلد فرعي خاص بكل تطبيق فرع (EXE + APK + بيانات الدخول معاً)."""
+    d = os.path.join(_apps_root(), name)
     os.makedirs(d, exist_ok=True)
     return d
 
 
-def _apk_dir():
-    """مجلد تصدير تطبيقات التلفون (APK) داخل المجلد الموحد."""
-    d = os.path.join(
-        _desktop_path(), UNIFIED_DIR_NAME, 'تطبيقات الفروع APK',
-    )
+def _icon_dir():
+    d = os.path.join(_apps_root(), '_icons')
     os.makedirs(d, exist_ok=True)
     return d
 
@@ -240,6 +250,11 @@ def _patch_apk_marker(dst, sys_id):
             pass
         return False
     os.remove(unsigned)
+    # ملف توقيع مساعد (idsig) لا يلزم للتثبيت — يُحذف لتنظيف مجلد الفرع
+    try:
+        os.remove(dst + '.idsig')
+    except OSError:
+        pass
     return os.path.isfile(dst)
 
 
@@ -345,8 +360,8 @@ def _build_branch_exe(name, code, sys_id, icon, build_id=None):
             if not os.path.isfile(built):
                 return None
             if build_id:
-                _set_step(build_id, 'نسخ التطبيق إلى مجلد المسؤول')
-            target = os.path.join(_admin_dir(), f'{name}.exe')
+                _set_step(build_id, 'نسخ التطبيق إلى مجلد التطبيقات')
+            target = os.path.join(_branch_dir(name), f'{name}.exe')
             shutil.copyfile(built, target)
             return target
     except Exception:
@@ -401,9 +416,9 @@ def _write_credentials_note(admin_dir, name, code, username, password, app_url):
                 'كلمة السر: ' + password,
                 'رابط الدخول: ' + app_url,
                 '',
-                'تطبيقان لكل فرع (داخل مجلد ZuhairSystem على سطح المكتب):',
-                '  - الابتوب: تطبيقات الفروع EXE',
-                '  - التلفون: تطبيقات الفروع APK — ثبّته مع السماح',
+                'تطبيقان لكل فرع داخل هذا المجلد نفسه:',
+                '  - الابتوب: ' + name + '.exe',
+                '  - التلفون: ' + name + '.apk — ثبّته مع السماح',
                 '    بالمصادر غير المعروفة.',
                 '',
                 'التطبيقان مستقلان تماماً: انسخهما إلى جهاز الموظف وافتحهما —',
@@ -456,10 +471,12 @@ def _run_desktop_app_build(build_id, branch):
 
 
 def _create_desktop_app(branch, build_id):
-    """إنشاء تطبيق فرع مستقل تلقائياً داخل مجلد المسؤول على سطح المكتب.
+    """إنشاء تطبيق فرع مستقل تلقائياً داخل مجلده الخاص على سطح المكتب.
 
     branch: dict باسم/id/كود/رابط/اسم مستخدم/كلمة سر الخاص بالفرع.
+    branch['kind']: 'all' (EXE + APK — افتراضي) أو 'exe' فقط أو 'apk' فقط.
     الخطوات:
+    - مجلد فرعي باسم الفرع داخل المجلد الموحد للتطبيقات.
     - أيقونة مخصصة تحمل اسم الفرع وكوده (render_icon.ps1).
     - تطبيق EXE مستقل بالأيقونة يفتح رابط السحابة على أي جهاز (PyInstaller).
     - تطبيق APK للتلفون من القالب الموقّع بمعرّف الفرع (فوري — دون بناء).
@@ -473,46 +490,75 @@ def _create_desktop_app(branch, build_id):
     code = str(branch.get('code') or '').strip() or 'BR--'
     username = str(branch.get('username') or '').strip()
     password = str(branch.get('password') or '').strip()
+    kind = str(branch.get('kind') or 'all').strip().lower()
+    if kind not in ('all', 'exe', 'apk'):
+        kind = 'all'
     if not app_url:
         return False, 'لا يوجد رابط للفرع', None
 
-    admin_dir = _admin_dir()
+    # مجلد الفرع الخاص: كل ملفاته (EXE + APK + بيانات الدخول) داخله
+    branch_dir = _branch_dir(name)
 
     # 1) أيقونة مخصصة تحمل اسم الفرع وكوده
-    _set_step(build_id, f'توليد أيقونة الفرع «{name}»')
-    icon = _render_branch_icon(name, code, sys_id)
+    icon = None
+    exe = None
+    if kind in ('all', 'exe'):
+        _set_step(build_id, f'توليد أيقونة الفرع «{name}»')
+        icon = _render_branch_icon(name, code, sys_id)
 
-    # 2) تطبيق EXE مستقل بأيقونة الفرع — يعمل على أي جهاز بعد نسخه
-    _set_step(build_id, f'بناء تطبيق «{name}» التنفيذي (EXE)')
-    exe = _build_branch_exe(name, code, sys_id, icon, build_id)
+        # 2) تطبيق EXE مستقل بأيقونة الفرع — يعمل على أي جهاز بعد نسخه
+        _set_step(build_id, f'بناء تطبيق «{name}» التنفيذي (EXE)')
+        exe = _build_branch_exe(name, code, sys_id, icon, build_id)
 
     # 3) احتياط عند تعذّر البناء: اختصار بنفس الأيقونة
     result = exe
-    if not result:
+    if kind in ('all', 'exe') and not result:
         _set_step(build_id, 'تعذّر بناء EXE — إنشاء اختصار احتياطي')
-        result = _make_shortcut(admin_dir, name, app_url, icon)
+        result = _make_shortcut(branch_dir, name, app_url, icon)
 
     # 4) تطبيق التلفون (APK) — نسخ فوري من القالب بمعرّف الفرع
     apk_path = None
-    if os.path.isfile(APK_TEMPLATE):
+    if kind in ('all', 'apk') and os.path.isfile(APK_TEMPLATE):
         _set_step(build_id, f'تجهيز تطبيق التلفون «{name}» (APK)')
         try:
-            target_apk = os.path.join(_apk_dir(), f'{name}.apk')
+            target_apk = os.path.join(branch_dir, f'{name}.apk')
             if _patch_apk_marker(target_apk, sys_id):
                 apk_path = target_apk
         except Exception:
             apk_path = None
     if build_id:
         _set_build(build_id, apk_path=apk_path)
+    if kind == 'apk' and apk_path:
+        result = apk_path
 
     # 5) ملف بيانات الدخول
-    _write_credentials_note(admin_dir, name, code, username, password, app_url)
+    _write_credentials_note(branch_dir, name, code, username, password, app_url)
+
+    if kind == 'apk':
+        if apk_path:
+            return True, (
+                f'تم إنشاء تطبيق التلفون (APK) «{name}» داخل مجلده الخاص '
+                f'({UNIFIED_DIR_NAME}\\التطبيقات\\{name})'
+            ), apk_path
+        return False, (
+            'تعذّر إنشاء تطبيق التلفون (APK) — يتوفر فقط من تطبيق الأدمن '
+            'على الابتوب (يتطلب أدوات أندرويد للتوقيع)'
+        ), None
 
     if result:
-        kind = 'تطبيق EXE' if exe else 'اختصار'
-        message = f'تم إنشاء {kind} «{name}» داخل مجلد ZuhairSystem'
+        is_exe = bool(exe)
+        kind_label = 'تطبيق EXE' if is_exe else 'اختصار'
+        message = (
+            f'تم إنشاء {kind_label} «{name}» داخل مجلده الخاص '
+            f'({UNIFIED_DIR_NAME}\\التطبيقات\\{name})'
+        )
         if apk_path:
             message += ' مع تطبيق التلفون (APK)'
+        if kind == 'exe':
+            message = (
+                f'تم إنشاء {kind_label} «{name}» داخل مجلده الخاص '
+                f'({UNIFIED_DIR_NAME}\\التطبيقات\\{name})'
+            )
         return True, message, result
     return False, f'تعذّر إنشاء التطبيق والاختصار لـ«{name}»', None
 

@@ -5,6 +5,7 @@ import '../../core/ads/app_ad_banner.dart';
 import '../../core/auth/auth_session.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/database/database_service.dart';
+import '../../systems/admin/admin_account_page.dart';
 import '../../systems/admin/branch_manager_page.dart';
 import '../../systems/admin/section_reports_page.dart';
 import '../../systems/eod/eod_report_page.dart';
@@ -45,6 +46,7 @@ class _HomePageState extends State<HomePage> {
   static const int _eodIndex = 19;
   static const int _addBranchIndex = 20;
   static const int _sectionReportsIndex = 22;
+  static const int _adminAccountIndex = 18;
 
   /// تعريفات وحدات الجداول — الفهرس في القائمة = الفهرس في المصفوفة
   static const List<({String title, String store, List<ColumnField> columns})>
@@ -206,6 +208,7 @@ class _HomePageState extends State<HomePage> {
         19 => 'ترحيل نهاية اليوم',
         20 => 'إضافة فرع جديد',
         22 => 'استقبال تقارير الفروع',
+        18 => 'حساب الأدمن — بيانات الدخول',
         _ =>
           _moduleSpecs[_selectedIndex].title.isNotEmpty
               ? _moduleSpecs[_selectedIndex].title
@@ -400,6 +403,8 @@ class _HomePageState extends State<HomePage> {
                 _item(19, Icons.send, 'ترحيل نهاية اليوم'),
                 if (isAdmin)
                   _item(20, Icons.add_business_outlined, 'إضافة فرع جديد'),
+                if (isAdmin)
+                  _item(18, Icons.manage_accounts_rounded, 'حساب الأدمن'),
                 _item(17, Icons.settings, 'الإعدادات'),
               ],
             ),
@@ -702,6 +707,11 @@ class _HomePageState extends State<HomePage> {
         return SystemConfig.instance.isAdmin
             ? const SectionReportsPage()
             : const EodReportPage();
+      case _adminAccountIndex:
+        // تغيير اسم المستخدم وكلمة السر — للأدمن فقط (محفوظة بالسحابة)
+        return SystemConfig.instance.isAdmin
+            ? const AdminAccountPage()
+            : _buildDashboard();
       default:
         final spec = _moduleSpecs[_selectedIndex];
         return DataModulePage(

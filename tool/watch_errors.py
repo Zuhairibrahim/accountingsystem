@@ -7,21 +7,26 @@
 مع اسم النظام والوقت والتفاصيل.
 """
 import json
+import os
 import pathlib
 import sys
+import tempfile
 import time
 import urllib.request
 
 PROJECT_ID = 'accountingsystem-fc3f0'
 COLLECTION = 'accounting_audit_logs'
-LOG_FILE = pathlib.Path(
-    r'C:\Users\PC\AppData\Local\Temp\opencode\audit_watch.log'
+
+# مسارات ديناميكية — تعمل على أي جهاز بالعالم (لا مسارات ثابتة)
+_ROOT = pathlib.Path(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
 )
+LOG_FILE = pathlib.Path(tempfile.gettempdir()) / 'opencode' / 'audit_watch.log'
 
 # مفتاح API من إعدادات FlutterFire
-_opts = pathlib.Path(
-    r'E:\vip\accountingsystem\lib\core\firebase\firebase_options.dart'
-).read_text(encoding='utf-8')
+_opts = (_ROOT / 'lib' / 'core' / 'firebase' / 'firebase_options.dart').read_text(
+    encoding='utf-8',
+)
 API_KEY = None
 for _line in _opts.splitlines():
     if 'apiKey' in _line and "'" in _line:

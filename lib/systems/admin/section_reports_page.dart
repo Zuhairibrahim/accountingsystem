@@ -625,6 +625,7 @@ class _SectionReportsPageState extends State<SectionReportsPage> {
         AuditAction.importReport => Icons.file_download_outlined,
         AuditAction.deleteReport => Icons.delete_outline,
         AuditAction.runtimeError => Icons.bug_report_outlined,
+        AuditAction.changeCredentials => Icons.key,
         _ => Icons.info_outline,
       };
 
@@ -637,6 +638,7 @@ class _SectionReportsPageState extends State<SectionReportsPage> {
         AuditAction.importReport => const Color(0xFF7C3AED),
         AuditAction.deleteReport => const Color(0xFFDC2626),
         AuditAction.runtimeError => const Color(0xFFDC2626),
+        AuditAction.changeCredentials => const Color(0xFFB45309),
         _ => const Color(0xFF64748B),
       };
 

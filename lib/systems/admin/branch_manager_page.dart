@@ -153,28 +153,21 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
     );
   }
 
-  /// تصدير تطبيق الفرع (exe) من بطاقة الفرع — للنسخ إلى جهاز الموظف.
-  Future<void> _exportBranchApp(BranchProfile p) async {
+  /// تصدير تطبيق الفرع من بطاقة الفرع — للنسخ إلى جهاز الموظف.
+  /// [kind]: 'all' (EXE + APK) أو 'exe' فقط أو 'apk' فقط.
+  Future<void> _exportBranchApp(BranchProfile p, {String kind = 'all'}) async {
     final messenger = ScaffoldMessenger.of(context);
-    final result = await createDesktopApp(
-      {
-        'id': p.id,
-        'name': p.name,
-        'code': p.code,
-        'url': _linkOf(p),
-        'username': p.username,
-        'password': p.password,
-      },
-      onStatus: (_) {},
-    );
+    final result = await _buildAppWithProgress(p, kind: kind);
+    final ok = result['ok'] == true;
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          result['ok'] == true
-              ? 'تم تصدير تطبيق «${p.name}» — داخل مجلد ZuhairSystem على سطح المكتب'
+          ok
+              ? (result['message'] as String? ??
+                  'تم تصدير تطبيق «${p.name}» بنجاح')
               : (result['message'] as String? ?? 'تعذّر التصدير'),
         ),
-        backgroundColor: result['ok'] == true
+        backgroundColor: ok
             ? const Color(0xFF059669)
             : const Color(0xFFD97706),
       ),
@@ -244,12 +237,21 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
     }
   }
 
-  /// تصدير تطبيق الفرع (exe) مع نافذة تقدم حية
-  /// (تحميل القالب ← تجهيز ← تنزيل الملف).
-  Future<Map<String, Object?>> _buildAppWithProgress(BranchProfile p) async {
+  /// تصدير تطبيق الفرع مع نافذة تقدم حية
+  /// (توليد الأيقونة ← بناء ← نسخ إلى مجلد الفرع).
+  /// [kind]: 'all' (EXE + APK) أو 'exe' فقط أو 'apk' فقط.
+  Future<Map<String, Object?>> _buildAppWithProgress(
+    BranchProfile p, {
+    String kind = 'all',
+  }) async {
     if (!mounted) {
       return const {'done': true, 'ok': false, 'message': 'أُغلقت الشاشة'};
     }
+    final targetLabel = switch (kind) {
+      'exe' => 'تطبيق الابتوب (EXE) فقط',
+      'apk' => 'تطبيق التلفون (APK) فقط',
+      _ => 'تطبيق الابتوب (EXE) + تطبيق التلفون (APK)',
+    };
     final step = ValueNotifier<String>('إرسال أمر التصدير...');
     final appFuture = createDesktopApp(
       {
@@ -259,6 +261,7 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
         'url': _linkOf(p),
         'username': p.username,
         'password': p.password,
+        'kind': kind,
       },
       onStatus: (st) {
         final s = st['step'];
@@ -297,10 +300,9 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'يُصدَّر الآن تطبيقان مستقلان لفرع «${p.name}»: تطبيق الابتوب '
-                    'EXE بأيقونة تحمل اسمه، وتطبيق التلفون APK — كلاهما داخل '
-                    'مجلد ZuhairSystem على سطح المكتب، وكل البيانات عبر '
-                    'السحابة (Firebase).',
+                    'يُصدَّر الآن $targetLabel لفرع «${p.name}» — داخل '
+                    'مجلد خاص باسم الفرع (ZuhairSystem\\التطبيقات\\${p.name}) '
+                    'على سطح المكتب، وكل البيانات عبر السحابة (Firebase).',
                     style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700),
                   ),
                   const SizedBox(height: 14),
@@ -409,10 +411,12 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
                         appOk
                             ? (isExe
                                 ? 'تم تصدير التطبيق «${p.name}.exe» بأيقونته '
-                                    'الخاصة — داخل مجلد ZuhairSystem على سطح '
-                                    'المكتب. انسخه إلى لابتوب الموظف وافتحه '
-                                    'مباشرة؛ يفتح نظام الفرع باسمه وبيانات '
-                                    'دخوله وكل البيانات عبر السحابة (Firebase).'
+                                    'الخاصة — داخل مجلده الخاص على سطح المكتب '
+                                    '(ZuhairSystem\\التطبيقات\\${p.name}) مع ملف '
+                                    'بيانات الدخول. انسخه إلى لابتوب الموظف '
+                                    'وافتحه مباشرة؛ يفتح نظام الفرع باسمه '
+                                    'وبيانات دخوله وكل البيانات عبر السحابة '
+                                    '(Firebase).'
                                 : 'تم إنشاء اختصار «$p.name» — جرّب تصدير '
                                     'التطبيق مرة أخرى من بطاقة الفرع.')
                             : '$appMsg\nأعد تصدير التطبيق من بطاقة الفرع بعد '
@@ -445,8 +449,8 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'تطبيق التلفون «APK» — داخل مجلد ZuhairSystem على سطح '
-                          'المكتب. انقله للتلفون وثبّته (اسمح بالتثبيت من '
+                          'تطبيق التلفون «APK» — بجانب ملف الـ EXE داخل مجلد '
+                          'الفرع نفسه. انقله للتلفون وثبّته (اسمح بالتثبيت من '
                           'مصادر غير معروفة)؛ يفتح نظام هذا الفرع بالتحديد.',
                           style: TextStyle(fontSize: 12),
                         ),
@@ -925,17 +929,98 @@ class _BranchManagerPageState extends State<BranchManagerPage> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF0F172A),
-                    side: BorderSide(color: color.withValues(alpha: 0.5)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                child: PopupMenuButton<String>(
+                  tooltip: 'تصدير التطبيقات',
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  onPressed: () => _exportBranchApp(b),
-                  icon: const Icon(Icons.download, size: 16),
-                  label: const Text(
-                    'تصدير exe',
-                    style: TextStyle(fontSize: 12),
+                  position: PopupMenuPosition.under,
+                  constraints: const BoxConstraints(minWidth: 230),
+                  onSelected: (kind) => _exportBranchApp(b, kind: kind),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'all',
+                      height: 46,
+                      child: Row(
+                        children: [
+                          Icon(Icons.all_inclusive, size: 19,
+                              color: Color(0xFF0F172A)),
+                          SizedBox(width: 10),
+                          Text(
+                            'الكل (EXE + APK)',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'exe',
+                      height: 46,
+                      child: Row(
+                        children: [
+                          Icon(Icons.desktop_windows, size: 19,
+                              color: Color(0xFF2563EB)),
+                          SizedBox(width: 10),
+                          Text(
+                            'نسخة EXE فقط (لابتوب)',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'apk',
+                      height: 46,
+                      child: Row(
+                        children: [
+                          Icon(Icons.smartphone, size: 19,
+                              color: Color(0xFF16A34A)),
+                          SizedBox(width: 10),
+                          Text(
+                            'نسخة APK فقط (تلفون)',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  child: Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: color.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.download_for_offline_outlined,
+                          size: 16,
+                          color: color,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'تصدير',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.keyboard_arrow_down,
+                          size: 16,
+                          color: color,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

@@ -20,7 +20,7 @@ import urllib.request
 HOST = 'https://accountingsystem-fc3f0.web.app'
 
 # نسخة التطبيق لكسر الكاش القديم في المتصفح — تُرفع مع كل تحديث مهم.
-APP_VERSION = '20260926-1'
+APP_VERSION = '20261005-1'
 
 # ملف تعريف متصفح مستقل ونظيف للتطبيق — يضمن فتح أحدث نسخة من السحابة
 # دائماً (لا كاش قديم ولا Service Worker قديم من جلسات التصفح العادية).
@@ -28,14 +28,33 @@ PROFILE_DIR = os.path.expandvars(
     r'%LOCALAPPDATA%\AccountingSystem\ChromeProfile',
 )
 
-# مجلد التنزيلات الرسمي للتطبيق — تطبيقات الفروع (EXE) داخل المجلد
-# الموحد ZuhairSystem على سطح المكتب.
-DOWNLOAD_DIR = r'C:\Users\PC\Desktop\ZuhairSystem\تطبيقات الفروع EXE'
+# مجلد التنزيلات الرسمي للتطبيق — المجلد الموحد للتطبيقات على سطح
+# المكتب (يُكتشف ديناميكياً ليعمل على أي جهاز بالعالم).
+def _desktop_path():
+    try:
+        out = subprocess.check_output(
+            ['powershell', '-NoProfile', '-Command',
+             "[Environment]::GetFolderPath('Desktop')"],
+            text=True, timeout=20,
+        )
+        path = out.strip()
+        if path and os.path.isdir(path):
+            return path
+    except Exception:
+        pass
+    fallback = os.path.join(os.path.expanduser('~'), 'Desktop')
+    return fallback if os.path.isdir(fallback) else os.path.expanduser('~')
+
+
+DOWNLOAD_DIR = os.path.join(
+    _desktop_path(), 'ZuhairSystem', 'التطبيقات',
+)
 
 # ==================== خادم بناء التطبيقات المحلي ====================
 # تطبيق الأدمن يشغّل تلقائياً خادماً محلياً خفيفاً (serve_all.py) يقدّم
 # واجهة /api/create_app — بها تُبنى تطبيقات الفروع محلياً بأيقونة تحمل
-# اسم الفرع وتُنسخ إلى مجلد adszuhair مباشرة (البيانات كلها عبر Firebase).
+# اسم الفرع وتُنسخ إلى مجلدها الخاص داخل المجلد الموحد للتطبيقات
+# على سطح المكتب (البيانات كلها عبر Firebase).
 SERVER_PING = 'http://localhost:8080/api/ping'
 SERVER_DIR = os.path.expandvars(r'%LOCALAPPDATA%\AccountingSystem\server')
 
@@ -156,7 +175,7 @@ def _ensure_local_server():
 
 
 def _setup_profile():
-    """ضبط مجلد التنزيل الافتراضي لمتصفح التطبيق على adszuhair — قبل الفتح."""
+    """ضبط مجلد التنزيل الافتراضي لمتصفح التطبيق — قبل الفتح."""
     try:
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
         os.makedirs(PROFILE_DIR, exist_ok=True)
@@ -279,7 +298,7 @@ def main():
     mode, label = _find_mode()
     url = f'{HOST}/?v={APP_VERSION}&sys={mode}'
     # تطبيق الأدمن فقط: تشغيل خادم بناء تطبيقات الفروع محلياً (API) —
-    # هو الذي يبني أيقونة باسم الفرع ويصدّر التطبيق إلى مجلد adszuhair.
+    # هو الذي يبني أيقونة باسم الفرع ويصدّر التطبيق إلى مجلد التطبيقات.
     if mode == 'admin':
         _ensure_local_server()
     _setup_profile()

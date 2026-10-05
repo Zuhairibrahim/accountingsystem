@@ -2,6 +2,7 @@
 
 import '../../core/auth/auth_session.dart';
 import '../../core/utils/audit_log_service.dart';
+import '../../systems/admin_credentials.dart';
 import '../../systems/branch_registry.dart';
 import '../../systems/branch_theme.dart';
 import '../../systems/system_config.dart';
@@ -36,6 +37,10 @@ class _LoginPageState extends State<LoginPage> {
     super.initState();
     _userFocus.addListener(_onFocusChanged);
     _passFocus.addListener(_onFocusChanged);
+    // تحميل بيانات دخول الأدمن المخصصة من السحابة مبكراً (تسخين الكاش)
+    if (SystemConfig.instance.isAdmin) {
+      AdminCredentials.instance.load();
+    }
   }
 
   void _onFocusChanged() {
@@ -51,17 +56,26 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     setState(() => _error = null);
     if (SystemConfig.branchDeleted.value) return;
 
-    final expected = SystemConfig.instance.credentials;
     final user = _userController.text.trim();
     final pass = _passController.text;
     if (user.isEmpty || pass.isEmpty) {
       setState(() => _error = 'الرجاء إدخال اسم المستخدم وكلمة السر');
       return;
     }
+    // الأدمن: قراءة أحدث بيانات دخول من السحابة قبل التحقق — يضمن أن
+    // البيانات الجديدة (بعد تغييرها من «حساب الأدمن») تعمل فوراً بعد
+    // تسجيل الخروج على أي جهاز في العالم.
+    if (SystemConfig.instance.isAdmin) {
+      setState(() => _loading = true);
+      await AdminCredentials.instance.load();
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+    final expected = SystemConfig.instance.credentials;
     if (user == expected.username && pass == expected.password) {
       setState(() => _loading = true);
       // تسجيل عملية الدخول الناجحة في سجل العمليات (يصل للأدمن فوراً)
