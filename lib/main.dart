@@ -1,3 +1,10 @@
+// ============================================================================
+//  © 2026 Zuhair Ibrahim — ALL RIGHTS RESERVED | جميع الحقوق محفوظة © زهير إبراهيم
+//  Project: Accounting System — نظام المحاسبة المتكامل
+//  This code contains a proprietary embedded copyright fingerprint.
+//  Selling, redistributing, or removing this notice is strictly forbidden.
+//  ============================================================================
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -9,6 +16,12 @@ import 'core/utils/embedded_marker.dart';
 import 'core/utils/runtime_error_reporter.dart';
 import 'systems/branch_registry.dart';
 import 'systems/system_config.dart';
+
+/// بصمة الملكية الفكرية — يُمنع حذفها أو تعديلها (انظر ملف LICENSE)
+/// Proprietary ownership fingerprint — must NOT be removed or altered (see LICENSE).
+const String kAppOwnershipFingerprint =
+    'OWNER:Zuhair-Ibrahim|PROJECT:accountingsystem|YEAR:2026|'
+    'LICENSE:ALL-RIGHTS-RESERVED|SIG:ZI-2026-ACC-PROPRIETARY';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

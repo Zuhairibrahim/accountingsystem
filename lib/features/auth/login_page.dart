@@ -460,15 +460,15 @@ class _LoginPageState extends State<LoginPage> {
       {bool compact = false}) {
     return Container(
       color: Colors.white,
-      child: Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 28 : 56,
-            vertical: 40,
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: TweenAnimationBuilder<double>(
+      alignment: Alignment.center,
+      child: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 28 : 56,
+          vertical: 40,
+        ),
+        child: SizedBox(
+          width: 430,
+          child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: 1),
               duration: const Duration(milliseconds: 600),
               curve: Curves.easeOutCubic,
