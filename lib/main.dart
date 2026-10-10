@@ -16,6 +16,7 @@ import 'core/utils/embedded_marker.dart';
 import 'core/utils/runtime_error_reporter.dart';
 import 'systems/branch_registry.dart';
 import 'systems/system_config.dart';
+import 'core/ownership/ownership_guard.dart';
 
 /// بصمة الملكية الفكرية — يُمنع حذفها أو تعديلها (انظر ملف LICENSE)
 /// Proprietary ownership fingerprint — must NOT be removed or altered (see LICENSE).
@@ -24,6 +25,7 @@ const String kAppOwnershipFingerprint =
     'LICENSE:ALL-RIGHTS-RESERVED|SIG:ZI-2026-ACC-PROPRIETARY';
 
 Future<void> main() async {
+  assert(ownershipSealsIntact(), 'Ownership seals must remain intact — see LICENSE');
   WidgetsFlutterBinding.ensureInitialized();
   // مراقبة أخطاء وقت التشغيل — كل خطأ يصل للوحة الأدمن فوراً
   RuntimeErrorReporter.install();
