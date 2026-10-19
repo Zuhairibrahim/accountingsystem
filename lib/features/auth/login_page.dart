@@ -157,32 +157,94 @@ class _LoginPageState extends State<LoginPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xFFF6F8FB),
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 980;
-            if (wide) {
-              return Row(
-                children: [
-                  Expanded(flex: 5, child: _brandPanel(theme, sys)),
-                  Expanded(flex: 4, child: _formSide(theme, sys)),
-                ],
-              );
-            }
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                ),
-                child: Column(
-                  children: [
-                    _brandPanel(theme, sys, compact: true),
-                    _formSide(theme, sys, compact: true),
-                  ],
-                ),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth >= 980;
+                  if (wide) {
+                    return Row(
+                      children: [
+                        Expanded(flex: 5, child: _brandPanel(theme, sys)),
+                        Expanded(flex: 4, child: _formSide(theme, sys)),
+                      ],
+                    );
+                  }
+                  return SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: Column(
+                        children: [
+                          _brandPanel(theme, sys, compact: true),
+                          _formSide(theme, sys, compact: true),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
+            ),
+            Positioned(
+              top: 16,
+              left: 16,
+              child: _forSaleBadge(),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  // ==================== شريط البيع ====================
+  Widget _forSaleBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A).withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _kGold, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.25),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.local_offer_outlined, color: _kGold, size: 14),
+          const SizedBox(width: 7),
+          const Text(
+            'FOR SALE — \$500',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.3,
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 12,
+            color: Colors.white24,
+            margin: const EdgeInsets.symmetric(horizontal: 9),
+          ),
+          const Icon(Icons.chat_outlined, color: _kGold, size: 13),
+          const SizedBox(width: 5),
+          const Text(
+            'واتساب 778066436',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -652,7 +714,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         ),
-      ),
     );
   }
 
