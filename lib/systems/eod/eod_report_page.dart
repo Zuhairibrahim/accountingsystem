@@ -10,6 +10,7 @@ import '../../core/database/db_filter.dart';
 import '../../core/utils/audit_log_service.dart';
 import '../../core/utils/cross_tab.dart';
 import '../../core/utils/file_transfer.dart';
+import '../../core/utils/formatters.dart';
 import '../../core/utils/system_sync.dart';
 import '../../systems/system_config.dart';
 
@@ -57,10 +58,10 @@ class _EodReportPageState extends State<EodReportPage> {
 
   static final NumberFormat _num = NumberFormat('#,##0.00');
 
-  double get _totalAmount => _todaySales.fold<double>(
+  double get _totalAmount => Formatters.round(_todaySales.fold<double>(
     0,
     (s, x) => s + (x['amount'] as num? ?? 0).toDouble(),
-  );
+  ));
 
   int get _soldProductCount => _soldLines.length;
 
@@ -140,8 +141,8 @@ class _EodReportPageState extends State<EodReportPage> {
               remainingQty: remaining,
             ),
           );
-          line.soldQty += qty;
-          line.soldTotal += total;
+          line.soldQty = Formatters.round(line.soldQty + qty, 3);
+          line.soldTotal = Formatters.round(line.soldTotal + total);
         }
       } catch (_) {
         // نتجاهل البنود غير الصالحة

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1200px; height: 675px; font-family: "Segoe UI", Tahoma, Arial, sans-serif; overflow: hidden; }
+  .cover {
+    width: 1200px; height: 675px; position: relative;
+    background: linear-gradient(135deg, #0B1220 0%, #15264B 60%, #0B1220 100%);
+    display: flex; flex-direction: row-reverse; align-items: center; padding: 40px 50px;
+  }
+  .text-side { width: 46%; padding-right: 30px; z-index: 2; }
+  .shot-side { width: 54%; position: relative; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .shot-side img {
+    width: 105%; max-width: 105%; border-radius: 12px;
+    border: 3px solid rgba(245,178,26,.55);
+    box-shadow: 0 24px 70px rgba(0,0,0,.65);
+  }
+  .gold { color: #F5B21A; }
+  h1 { color: #fff; font-size: 42px; font-weight: 800; line-height: 1.4; margin-bottom: 16px; }
+  h2 { color: #c9d4ea; font-size: 23px; font-weight: 600; line-height: 1.7; margin-bottom: 24px; }
+  .steps { list-style: none; margin-bottom: 26px; counter-reset: st; }
+  .steps li { color: #e8edf7; font-size: 21px; line-height: 2.1; position: relative; padding-right: 44px; }
+  .steps li::before {
+    counter-increment: st; content: counter(st);
+    position: absolute; right: 0; top: 8px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: #F5B21A; color: #0B1220; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+  }
+  .badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #F5B21A, #d9990d); color: #0B1220;
+    font-weight: 800; font-size: 19px; padding: 10px 24px; border-radius: 30px;
+  }
+</style>
+</head>
+<body>
+  <div class="cover">
+    <div class="text-side">
+      <h1>أنشئ فرعاً جديداً<br><span class="gold">بتطبيق يحمل اسمك!</span></h1>
+      <h2>من داخل النظام… وبضغطة واحدة:</h2>
+      <ol class="steps">
+        <li>أدخل اسم الفرع وبيانات دخوله</li>
+        <li>يُبنى تلقائياً تطبيق EXE للابتوب</li>
+        <li>وتطبيق APK لجوال الفرع</li>
+        <li>تقارير الفرع تصلك لحظياً للأدمن</li>
+      </ol>
+      <span class="badge">حتى 100 فرع — بدون أي كود</span>
+    </div>
+    <div class="shot-side">
+      <img src="16_bottom.png" alt="">
+    </div>
+  </div>
+</body>
+</html>

@@ -7,6 +7,7 @@ import '../../core/ads/ad_service.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/database/database_service.dart';
 import '../../core/database/db_filter.dart';
+import '../../core/utils/formatters.dart';
 import '../../core/utils/invoice_printer.dart';
 import '../../core/widgets/barcode_scan_dialog.dart';
 
@@ -18,7 +19,7 @@ class _CartLine {
   _CartLine({required this.product});
 
   double get price => (product['sale_price'] as num? ?? 0).toDouble();
-  double get total => price * qty;
+  double get total => Formatters.round(price * qty);
 }
 
 /// نقطة البيع: مسح الباركود + سلة + كمية يدوية + إجمالي + طباعة + ملخص اليوم
@@ -77,12 +78,13 @@ class _PosPageState extends State<PosPage> {
         _branchId = (branches.first['id'] as num?)?.toInt();
       }
       _todaySales = today;
-      _todayTotal = total;
+      _todayTotal = Formatters.round(total);
       _loading = false;
     });
   }
 
-  double get _cartTotal => _cart.fold<double>(0, (sum, l) => sum + l.total);
+  double get _cartTotal =>
+      Formatters.round(_cart.fold<double>(0, (sum, l) => sum + l.total));
 
   String get _branchName {
     for (final b in _branches) {
@@ -189,12 +191,11 @@ class _PosPageState extends State<PosPage> {
     for (final line in _cart) {
       final id = (line.product['id'] as num).toInt();
       final before = (line.product['stock_qty'] as num? ?? 0).toDouble();
-      final after = before - line.qty;
-      remaining[line.product['name']?.toString() ?? 'منتج'] = after < 0
-          ? 0
-          : after;
+      final after = Formatters.round(before - line.qty, 3);
+      final safeAfter = after < 0 ? 0.0 : after;
+      remaining[line.product['name']?.toString() ?? 'منتج'] = safeAfter;
       await _svc.update(AppConstants.tProducts, id, {
-        'stock_qty': after < 0 ? 0 : after,
+        'stock_qty': safeAfter,
       });
     }
 

@@ -65,6 +65,7 @@ class AppTheme {
       ),
       dividerTheme: const DividerThemeData(space: 1),
       scrollbarTheme: ScrollbarThemeData(
+        thumbVisibility: const WidgetStatePropertyAll(true),
         thumbColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.hovered)
               ? const Color(0xFFFFEE58)

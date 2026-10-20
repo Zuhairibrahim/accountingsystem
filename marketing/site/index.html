@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام محاسبي ومخازن متكامل جاهز — فواتير ونقطة بيع وفروع | 500$ فقط</title>
+<meta name="description" content="نظام محاسبة ومخازن متكامل جاهز للتسليم فوراً: نقطة بيع، فواتير، مخزون، رواتب، تقارير لحظية، فروع بتطبيقات EXE وAPK. يعمل على الويب والكمبيوتر والجوال. السعر 500$ دفعة واحدة.">
+<meta property="og:title" content="نظام محاسبي ومخازن متكامل جاهز — 500$ فقط">
+<meta property="og:description" content="فواتير، نقطة بيع، مخازن، فروع، تقارير لحظية، تطبيقات EXE وAPK بهويتك. جاهز للتسليم فوراً.">
+<meta property="og:image" content="assets/banners/cover_main.png">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" href="assets/banners/cover_main.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a1120;--bg2:#0e1930;--card:#121f3a;--card2:#16264a;
+  --emerald:#10b981;--emerald2:#34d399;--gold:#f5b301;--gold2:#ffd166;
+  --text:#e8eef9;--muted:#9db0cc;--line:rgba(157,176,204,.16);
+  --wa:#25d366;--danger:#f87171;--radius:18px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Cairo',Tahoma,sans-serif;background:var(--bg);color:var(--text);line-height:1.8;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+.container{width:min(1140px,92%);margin-inline:auto}
+section{padding:84px 0;position:relative}
+.section-head{text-align:center;max-width:720px;margin:0 auto 52px}
+.kicker{display:inline-flex;align-items:center;gap:8px;background:rgba(16,185,129,.12);color:var(--emerald2);border:1px solid rgba(16,185,129,.3);padding:6px 18px;border-radius:999px;font-size:.85rem;font-weight:700;margin-bottom:18px}
+h2.title{font-size:clamp(1.6rem,3.4vw,2.4rem);font-weight:900;line-height:1.4}
+.section-head p{color:var(--muted);margin-top:12px;font-size:1.05rem}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:14px 34px;border-radius:14px;font-weight:800;font-size:1.05rem;font-family:inherit;cursor:pointer;transition:.25s;border:none}
+.btn-wa{background:var(--wa);color:#04310f;box-shadow:0 10px 30px rgba(37,211,102,.35)}
+.btn-wa:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(37,211,102,.45)}
+.btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--line)}
+.btn-ghost:hover{border-color:var(--emerald);color:var(--emerald2)}
+.btn-gold{background:linear-gradient(135deg,var(--gold),#e09a00);color:#241a00;box-shadow:0 10px 30px rgba(245,179,1,.3)}
+.btn-gold:hover{transform:translateY(-3px)}
+
+header{position:sticky;top:0;z-index:100;background:rgba(10,17,32,.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);transition:.3s}
+header.scrolled{background:rgba(10,17,32,.97);box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:14px 0}
+.brand{display:flex;align-items:center;gap:12px;font-weight:900;font-size:1.15rem}
+.brand .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--emerald),#0d8a63);display:grid;place-items:center;font-size:1.25rem}
+.brand small{display:block;font-size:.68rem;color:var(--muted);font-weight:600;line-height:1}
+.nav-links{display:flex;gap:28px;font-weight:700;font-size:.95rem}
+.nav-links a{color:var(--muted);transition:.2s}
+.nav-links a:hover{color:var(--emerald2)}
+.nav-cta{display:flex;align-items:center;gap:14px}
+.nav-price{color:var(--gold2);font-weight:900;font-size:1.05rem}
+.nav .btn{padding:10px 22px;font-size:.92rem}
+
+.hero{padding:70px 0 90px;background:radial-gradient(1000px 500px at 80% -10%,rgba(16,185,129,.14),transparent),radial-gradient(800px 400px at 10% 110%,rgba(245,179,1,.08),transparent)}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(245,179,1,.12);border:1px solid rgba(245,179,1,.35);color:var(--gold2);padding:7px 20px;border-radius:999px;font-weight:700;font-size:.9rem;margin-bottom:22px}
+.badge .dot{width:9px;height:9px;border-radius:50%;background:var(--emerald);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.5)}50%{box-shadow:0 0 0 8px rgba(16,185,129,0)}}
+h1{font-size:clamp(1.9rem,4.6vw,3.3rem);font-weight:900;line-height:1.35}
+h1 .grad{background:linear-gradient(120deg,var(--emerald2),#7dd3fc);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.sub{color:var(--muted);font-size:1.15rem;margin:22px 0 30px;max-width:540px}
+.hero-price{display:flex;align-items:baseline;gap:14px;margin-bottom:30px}
+.hero-price .now{font-size:3rem;font-weight:900;color:var(--gold2);line-height:1}
+.hero-price .once{color:var(--muted);font-weight:700}
+.hero-ctas{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:34px}
+.hero-points{display:flex;flex-wrap:wrap;gap:10px 22px;color:var(--emerald2);font-weight:700;font-size:.95rem}
+.hero-points span{display:flex;align-items:center;gap:7px}
+.mockup{position:relative}
+.mockup-frame{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:22px;padding:14px;box-shadow:0 40px 90px rgba(0,0,0,.55)}
+.mockup-frame img{border-radius:14px;width:100%}
+.float-chip{position:absolute;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:10px 18px;font-weight:800;font-size:.88rem;display:flex;align-items:center;gap:9px;box-shadow:0 14px 34px rgba(0,0,0,.45);animation:floaty 4s ease-in-out infinite}
+.chip1{top:-18px;left:-14px;color:var(--emerald2)}
+.chip2{bottom:-16px;right:-10px;color:var(--gold2);animation-delay:1.4s}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+
+.stats{background:var(--bg2);border-block:1px solid var(--line);padding:34px 0}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}
+.stat b{font-size:2rem;font-weight:900;color:var(--emerald2);display:block;line-height:1.3}
+.stat span{color:var(--muted);font-weight:700;font-size:.92rem}
+
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.feature{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:30px 26px;transition:.3s}
+.feature:hover{transform:translateY(-6px);border-color:rgba(16,185,129,.45);box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.feature .ico{width:56px;height:56px;border-radius:15px;display:grid;place-items:center;font-size:1.6rem;background:rgba(16,185,129,.13);margin-bottom:18px}
+.feature h3{font-size:1.15rem;font-weight:800;margin-bottom:8px}
+.feature p{color:var(--muted);font-size:.95rem}
+
+.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.shot{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;cursor:zoom-in;transition:.3s}
+.shot:hover{transform:translateY(-5px);border-color:rgba(16,185,129,.5)}
+.shot img{width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top}
+.shot figcaption{padding:13px 18px;font-weight:800;font-size:.95rem;display:flex;align-items:center;gap:9px;color:var(--text)}
+.shot figcaption i{color:var(--emerald);font-style:normal}
+#lightbox{position:fixed;inset:0;background:rgba(4,8,16,.94);z-index:200;display:none;place-items:center;padding:24px;cursor:zoom-out}
+#lightbox.open{display:grid}
+#lightbox img{max-width:min(1100px,94vw);max-height:88vh;border-radius:14px;border:1px solid var(--line)}
+#lightbox .lb-cap{text-align:center;margin-top:14px;font-weight:800;color:var(--muted)}
+#lightbox .lb-close{position:fixed;top:20px;left:20px;width:46px;height:46px;border-radius:50%;background:var(--card2);border:1px solid var(--line);color:var(--text);font-size:1.3rem;cursor:pointer;display:grid;place-items:center}
+
+.video-wrap{max-width:900px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.video-wrap video{width:100%;border-radius:14px;display:block}
+
+.branch-box{background:linear-gradient(160deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:24px;padding:56px;display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center}
+.branch-box h3{font-size:1.7rem;font-weight:900;margin-bottom:14px}
+.branch-box p{color:var(--muted);margin-bottom:24px}
+.branch-list{list-style:none;display:grid;gap:13px;margin-bottom:28px}
+.branch-list li{display:flex;gap:11px;align-items:flex-start;font-weight:700}
+.branch-list li::before{content:"✓";color:var(--emerald);font-weight:900;background:rgba(16,185,129,.13);min-width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:.85rem;margin-top:4px}
+.branch-cards{display:grid;gap:16px}
+.bcard{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:20px 22px;display:flex;gap:15px;align-items:center}
+.bcard .bico{font-size:1.9rem}
+.bcard b{display:block;font-size:1.02rem}
+.bcard span{color:var(--muted);font-size:.88rem}
+
+.get-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.get-item{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:26px;display:flex;gap:16px;align-items:flex-start;transition:.3s}
+.get-item:hover{border-color:rgba(245,179,1,.5)}
+.get-item .num{min-width:42px;height:42px;border-radius:12px;background:rgba(245,179,1,.14);color:var(--gold2);font-weight:900;font-size:1.1rem;display:grid;place-items:center}
+.get-item b{display:block;font-size:1.05rem;margin-bottom:5px}
+.get-item p{color:var(--muted);font-size:.92rem}
+
+.pricing{background:radial-gradient(700px 400px at 50% 0,rgba(245,179,1,.09),transparent)}
+.price-card{max-width:520px;margin:0 auto;background:linear-gradient(165deg,var(--card2),var(--card));border:1.5px solid rgba(245,179,1,.4);border-radius:26px;padding:46px 42px;text-align:center;box-shadow:0 40px 100px rgba(0,0,0,.5)}
+.price-card .plan{color:var(--gold2);font-weight:800;letter-spacing:.5px}
+.price-card .amount{font-size:4rem;font-weight:900;color:var(--gold2);line-height:1.15;margin:8px 0 2px}
+.price-card .per{color:var(--muted);font-weight:700;margin-bottom:26px}
+.price-feats{list-style:none;text-align:right;display:grid;gap:12px;margin-bottom:32px}
+.price-feats li{display:flex;gap:11px;align-items:flex-start;font-weight:700;font-size:.98rem}
+.price-feats li::before{content:"✓";color:var(--emerald);font-weight:900;min-width:24px;height:24px;border-radius:7px;background:rgba(16,185,129,.13);display:grid;place-items:center;font-size:.8rem;margin-top:5px}
+.price-card .btn{width:100%}
+.price-note{color:var(--muted);font-size:.85rem;margin-top:16px}
+
+.custom-cta{background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(52,211,153,.05));border:1.5px dashed rgba(16,185,129,.5);border-radius:24px;padding:52px;text-align:center}
+.custom-cta h3{font-size:1.6rem;font-weight:900;margin-bottom:12px}
+.custom-cta p{color:var(--muted);max-width:620px;margin:0 auto 28px;font-size:1.05rem}
+
+.faq-list{max-width:780px;margin:0 auto;display:grid;gap:14px}
+details{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;transition:.25s}
+details[open]{border-color:rgba(16,185,129,.45)}
+summary{padding:20px 24px;font-weight:800;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:14px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:1.5rem;color:var(--emerald);font-weight:400;transition:.25s}
+details[open] summary::after{transform:rotate(45deg)}
+details .ans{padding:0 24px 22px;color:var(--muted)}
+
+footer{background:var(--bg2);border-top:1px solid var(--line);padding:44px 0 30px;text-align:center}
+footer .fbrand{font-weight:900;font-size:1.2rem;margin-bottom:8px}
+footer p{color:var(--muted);font-size:.92rem}
+footer .fwa{margin:20px 0;color:var(--emerald2);font-weight:800}
+footer .copy{color:#5f7292;font-size:.82rem;margin-top:14px}
+
+.wa-float{position:fixed;bottom:26px;left:26px;z-index:150;width:62px;height:62px;border-radius:50%;background:var(--wa);display:grid;place-items:center;box-shadow:0 12px 34px rgba(37,211,102,.5);animation:pulse2 2.2s infinite;transition:.25s}
+.wa-float:hover{transform:scale(1.1)}
+@keyframes pulse2{0%,100%{box-shadow:0 12px 34px rgba(37,211,102,.5),0 0 0 0 rgba(37,211,102,.45)}50%{box-shadow:0 12px 34px rgba(37,211,102,.5),0 0 0 16px rgba(37,211,102,0)}}
+.wa-float svg{width:32px;height:32px;fill:#04310f}
+
+@media(max-width:920px){
+  .hero-grid,.branch-box{grid-template-columns:1fr}
+  .features-grid,.gallery-grid,.get-grid{grid-template-columns:repeat(2,1fr)}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .nav-links,.nav-price{display:none}
+}
+@media(max-width:600px){
+  section{padding:60px 0}
+  .features-grid,.gallery-grid,.get-grid{grid-template-columns:1fr}
+  .hero{padding:40px 0 60px}
+  .branch-box,.custom-cta{padding:32px 22px}
+  .price-card{padding:34px 22px}
+  .nav .btn{padding:9px 16px;font-size:.82rem}
+}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <div class="container nav">
+    <a class="brand" href="#top">
+      <span class="logo">🧾</span>
+      <span>نظام المحاسبة المتكامل<small>إعداد: زهير إبراهيم</small></span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features">المميزات</a>
+      <a href="#shots">الشاشات</a>
+      <a href="#tour">الجولة</a>
+      <a href="#branches">الفروع</a>
+      <a href="#pricing">السعر</a>
+      <a href="#faq">الأسئلة</a>
+    </nav>
+    <div class="nav-cta">
+      <span class="nav-price">500$</span>
+      <a class="btn btn-wa" href="https://wa.me/967778066436?text=مرحباً زهير، مهتم بنظام المحاسبة المتكامل. أرجو إرسال التفاصيل ورابط التجربة." target="_blank" rel="noopener">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .3-3.4-.7-2.9-1.2-4.7-4.1-4.9-4.3-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5s.7 1.8.8 1.9c0 .1.1.3 0 .5-.1.2-.1.3-.3.5l-.4.5c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.7-.1.2-.2.8-.9 1-1.2.2-.3.4-.3.7-.2.3.1 1.7.8 2 1 .3.1.5.2.6.3.1.2.1.7-.1 1.2z"/></svg>
+        اطلب النظام
+      </a>
+    </div>
+  </div>
+</header>
+
+<section class="hero" id="top">
+  <div class="container hero-grid">
+    <div>
+      <span class="badge"><span class="dot"></span> جاهز للتسليم فوراً — لا انتظار تطوير</span>
+      <h1>نظام محاسبة ومخازن <span class="grad">متكامل</span> لمتجرك أو شركتك</h1>
+      <p class="sub">فواتير ونقطة بيع سريعة، مخازن، عملاء وموردون، رواتب وحضور، تقارير لحظية، وفروع بتطبيقات خاصة — يعمل على الويب والكمبيوتر والجوال، وباسمك وشعارك.</p>
+      <div class="hero-price">
+        <span class="now">500$</span>
+        <span class="once">دفعة واحدة — بدون اشتراكات شهرية</span>
+      </div>
+      <div class="hero-ctas">
+        <a class="btn btn-wa" href="https://wa.me/967778066436?text=مرحباً زهير، مهتم بنظام المحاسبة المتكامل (500$). أرجو إرسال التفاصيل ورابط التجربة." target="_blank" rel="noopener">💬 تواصل واتساب الآن</a>
+        <a class="btn btn-ghost" href="#tour">▶ شاهد جولة النظام</a>
+      </div>
+      <div class="hero-points">
+        <span>✓ واجهة عربية بالكامل</span>
+        <span>✓ سحابي 100%</span>
+        <span>✓ دعم فني</span>
+        <span>✓ تجربة قبل الشراء</span>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-frame">
+        <img src="assets/banners/cover_main.png" alt="نظام المحاسبة المتكامل — لوحة التحكم الرئيسية">
+      </div>
+      <div class="float-chip chip1">⚡ فاتورة في ثوانٍ</div>
+      <div class="float-chip chip2">📊 تقارير لحظية</div>
+    </div>
+  </div>
+</section>
+
+<div class="stats">
+  <div class="container stats-grid">
+    <div class="stat"><b>+16</b><span>شاشة جاهزة تعمل</span></div>
+    <div class="stat"><b>3</b><span>منصات: ويب + كمبيوتر + جوال</span></div>
+    <div class="stat"><b>100</b><span>فرع كحد أقصى بتطبيقاتها</span></div>
+    <div class="stat"><b>24/7</b><span>بياناتك سحابية بأمان</span></div>
+  </div>
+</div>
+
+<section id="features">
+  <div class="container">
+    <div class="section-head">
+      <span class="kicker">⚡ المميزات</span>
+      <h2 class="title">كل ما يحتاجه متجرك في نظام واحد</h2>
+      <p>توقف عن إدارة أعمالك بالورق والدفاتر — النظام يغطي الدورة الكاملة من الفاتورة إلى التقرير.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature"><div class="ico">🧾</div><h3>نقطة بيع فورية (POS)</h3><p>أصدر فاتورة بيع في ثوانٍ مع خصم وضريبة وطباعة حرارية، وسجل نقدي كامل لكل وردية.</p></div>
+      <div class="feature"><div class="ico">📦</div><h3>مخازن ومنتجات</h3><p>تصنيفات، وحدات، مستودعات، حركات مخزون، جرد، وتنبيه تلقائي عند بلوغ حد الطلب.</p></div>
+      <div class="feature"><div class="ico">👥</div><h3>عملاء وموردون</h3><p>بطاقات كاملة مع كشف حساب ورصيد مستحق لكل عميل ومورد، وسجل تعاملات تفصيلي.</p></div>
+      <div class="feature"><div class="ico">🛒</div><h3>مشتريات ومرتجعات</h3><p>فواتير شراء ومرتجعات بيع وشراء، مربوطة تلقائياً بالمخزون والحسابات.</p></div>
+      <div class="feature"><div class="ico">🏦</div><h3>صناديق وبنوك</h3><p>سندات قبض وصرف، تحويلات بين الصناديق والبنوك، وحركة نقدية مفصلة.</p></div>
+      <div class="feature"><div class="ico">👷</div><h3>موظفون ورواتب</h3><p>إدارة الموظفين، الحضور والانصراف، واحتساب الرواتب مع الكشوف الشهرية.</p></div>
+      <div class="feature"><div class="ico">📊</div><h3>تقارير لحظية</h3><p>مبيعات، أرباح، مصروفات، مخزون، وترحيل نهاية اليوم بضغطة زر واحدة.</p></div>
+      <div class="feature"><div class="ico">🏢</div><h3>نظام فروع كامل</h3><p>حتى 100 فرع — كل فرع يحصل على تطبيق EXE وAPK باسمه وشعاره، وتقاريره تصلك لحظياً.</p></div>
+      <div class="feature"><div class="ico">🔒</div><h3>صلاحيات وأمان</h3><p>مستخدمون بأدوار متعددة (مدير، محاسب، كاشير، أمين مستودع) مع سجل تدقيق كامل.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="shots" style="background:var(--bg2)">
+  <div class="container">
+    <div class="section-head">
+      <span class="kicker">🖼️ الشاشات</span>
+      <h2 class="title">شاهد النظام من الداخل</h2>
+      <p>لقطات حقيقية من النظام وهو يعمل — اضغط على أي صورة لتكبيرها.</p>
+    </div>
+    <div class="gallery-grid">
+      <figure class="shot"><img src="assets/screenshots/01_dashboard.png" alt="لوحة التحكم"><figcaption><i>▣</i> لوحة التحكم والملخصات</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/02_pos.png" alt="نقطة البيع"><figcaption><i>▣</i> نقطة البيع (POS)</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/03_purchases.png" alt="المشتريات"><figcaption><i>▣</i> فواتير المشتريات</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/04_customers.png" alt="العملاء"><figcaption><i>▣</i> إدارة العملاء</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/05_suppliers.png" alt="الموردون"><figcaption><i>▣</i> إدارة الموردين</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/06_products.png" alt="المنتجات"><figcaption><i>▣</i> المنتجات والأصناف</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/07_inventory.png" alt="المخزون"><figcaption><i>▣</i> المخزون والمستودعات</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/08_cash_banks.png" alt="الصناديق والبنوك"><figcaption><i>▣</i> الصناديق والبنوك</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/09_expenses.png" alt="المصروفات"><figcaption><i>▣</i> المصروفات والإيرادات</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/10_employees.png" alt="الموظفون"><figcaption><i>▣</i> إدارة الموظفين</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/11_salaries.png" alt="الرواتب"><figcaption><i>▣</i> الرواتب والكشوف</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/12_attendance.png" alt="الحضور والانصراف"><figcaption><i>▣</i> الحضور والانصراف</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/13_reports.png" alt="التقارير"><figcaption><i>▣</i> التقارير الشاملة</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/14_branches.png" alt="الفروع"><figcaption><i>▣</i> إدارة الفروع</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/15_add_branch.png" alt="إنشاء فرع"><figcaption><i>▣</i> إنشاء فرع جديد</figcaption></figure>
+      <figure class="shot"><img src="assets/screenshots/00_login.png" alt="تسجيل الدخول"><figcaption><i>▣</i> تسجيل الدخول الآمن</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="tour">
+  <div class="container">
+    <div class="section-head">
+      <span class="kicker">🎬 جولة النظام</span>
+      <h2 class="title">شاهد النظام يعمل أمامك</h2>
+      <p>جولة سريعة داخل النظام — من تسجيل الدخول حتى التقارير.</p>
+    </div>
+    <div class="video-wrap">
+      <video controls preload="metadata" poster="assets/banners/cover_pos.png">
+        <source src="assets/tour.mp4" type="video/mp4">
+        متصفحك لا يدعم تشغيل الفيديو.
+      </video>
+    </div>
+  </div>
+</section>
+
+<section id="branches" style="background:var(--bg2)">
+  <div class="container">
+    <div class="section-head">
+      <span class="kicker">🏢 الفروع</span>
+      <h2 class="title">كل فرع يحصل على تطبيقاته الخاصة — تلقائياً</h2>
+      <p>أنشئ الفرع من داخل النظام، ويُبنى له فوراً تطبيق باسمه وشعاره، وتصلك تقاريره لحظياً.</p>
+    </div>
+    <div class="branch-box">
+      <div>
+        <h3>توسَّع بفروعك بلا حدود</h3>
+        <p>سواء كان لديك فرع واحد أو عشرون، كل فرع يعمل بنفس النظام مع عزل كامل لبياناته وتقاريره.</p>
+        <ul class="branch-list">
+          <li>إنشاء فرع جديد من شاشة واحدة — بدون أي خبرة تقنية</li>
+          <li>تطبيق كمبيوتر (EXE) وتطبيق جوال (APK) لكل فرع بهويته</li>
+          <li>تقارير كل فرع تصلك لحظياً في النظام الرئيسي</li>
+          <li>مزامنة سحابية فورية بين كل الأجهزة والفروع</li>
+        </ul>
+        <a class="btn btn-wa" href="https://wa.me/967778066436?text=مرحباً زهير، عندي أكثر من فرع وأريد معرفة كيفية عمل نظام الفروع." target="_blank" rel="noopener">💬 اسأل عن نظام الفروع</a>
+      </div>
+      <div class="branch-cards">
+        <div class="bcard"><span class="bico">🖥️</span><div><b>تطبيق EXE للكمبيوتر</b><span>لكل فرع — باسم الفرع وشعاره</span></div></div>
+        <div class="bcard"><span class="bico">📱</span><div><b>تطبيق APK للجوال</b><span>أندرويد خاص بكل فرع وجاهز للتثبيت</span></div></div>
+        <div class="bcard"><span class="bico">🌐</span><div><b>نسخة ويب سحابية</b><span>تعمل من أي متصفح في العالم</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="get">
+  <div class="container">
+    <div class="section-head">
+      <span class="kicker">📦 التسليم</span>
+      <h2 class="title">ماذا تستلم بالضبط؟</h2>
+    </div>
+    <div class="get-grid">
+      <div class="get-item"><span class="num">1</span><div><b>النظام كاملاً باسمك</b><p>مربوط بحساب سحابي خاص بك — بياناتك ملكك وحدك.</p></div></div>
+      <div class="get-item"><span class="num">2</span><div><b>تطبيقات بهويتك</b><p>تطبيق EXE للكمبيوتر + APK للجوال باسم متجرك وشعاره.</p></div></div>
+      <div class="get-item"><span class="num">3</span><div><b>بيانات الأدمن كاملة</b><p>تستلم حساب المدير وتغيّر بيانات الدخول من داخل النظام.</p></div></div>
+      <div class="get-item"><span class="num">4</span><div><b>دليل تشغيل وفيديو شرح</b><p>دليل مبسط يتعلم منه أي موظف في دقائق.</p></div></div>
+      <div class="get-item"><span class="num">5</span><div><b>دعم فني مجاني</b><p>متابعة وتشغيل وإجابة على استفساراتك بعد التسليم.</p></div></div>
+      <div class="get-item"><span class="num">6</span><div><b>تجربة قبل الشراء</b><p>رابط تجربة حية للنظام قبل اتخاذ قرار الشراء.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing" class="pricing">
+  <div class="container">
+    <div class="section-head">
+      <span class="kicker">💰 العرض</span>
+      <h2 class="title">سعر واحد — ملكية كاملة</h2>
+    </div>
+    <div class="price-card">
+      <div class="plan">الباقة الكاملة</div>
+      <div class="amount">500$</div>
+      <div class="per">دفعة واحدة — بدون رسوم شهرية</div>
+      <ul class="price-feats">
+        <li>النظام كاملاً بكل الأقسام (نسخة ويب سحابية خاصة بك)</li>
+        <li>تطبيق EXE للكمبيوتر + APK للجوال بهويتك</li>
+        <li>ربط بياناتك بحسابك السحابي الخاص</li>
+        <li>دليل تشغيل مبسط + فيديو شرح</li>
+        <li>دعم فني لمدة شهر بعد التسليم</li>
+        <li>تجربة حية قبل الشراء</li>
+      </ul>
+      <a class="btn btn-gold" href="https://wa.me/967778066436?text=مرحباً زهير، أريد شراء نظام المحاسبة المتكامل بالباقة الكاملة (500$). أرجو إرسال خطوات الشراء." target="_blank" rel="noopener">💳 اشترِ الآن — 500$</a>
+      <p class="price-note">الدفع بعد الاتفاق وتجربة النظام • تُسلَّم خلال 3 أيام</p>
+    </div>
+  </div>
+</section>
+
+<section id="custom">
+  <div class="container">
+    <div class="custom-cta">
+      <h3>🛠️ تريد تعديلات أو إضافات خاصة؟</h3>
+      <p>النظام قابل للتخصيص بالكامل: شاشات جديدة، تقارير معينة، ربط مع خدمات أخرى، أو أي فكرة تريدها لمتجرك — راسلني على واتساب ونناقش التفاصيل والتنفيذ.</p>
+      <a class="btn btn-wa" href="https://wa.me/967778066436?text=مرحباً زهير، أريد تعديلات وإضافات على نظام المحاسبة. أريد مناقشة التفاصيل." target="_blank" rel="noopener">💬 ناقش التعديلات على واتساب</a>
+      <p style="margin-top:18px;color:var(--emerald2);font-weight:800;font-size:1.1rem;direction:ltr">+967 778 066 436</p>
+    </div>
+  </div>
+</section>
+
+<section id="faq" style="background:var(--bg2)">
+  <div class="container">
+    <div class="section-head">
+      <span class="kicker">❓ الأسئلة الشائعة</span>
+      <h2 class="title">إجابات قبل أن تسأل</h2>
+    </div>
+    <div class="faq-list">
+      <details><summary>هل النظام جاهز أم في مرحلة التطوير؟</summary><div class="ans">جاهز بالكامل ويعمل حالياً — ما عليك إلا التسليم والربط باسمك وشعارك، وتستلمه خلال 3 أيام.</div></details>
+      <details><summary>هل البيانات محفوظة بأمان؟</summary><div class="ans">نعم — البيانات سحابية 100% على سيرفرات Firebase (جوجل) بحساب خاص بك، وتصل إليها من أي جهاز في العالم.</div></details>
+      <details><summary>هل أستطيع إضافة فروع لاحقاً؟</summary><div class="ans">نعم — النظام يدعم حتى 100 فرع، وكل فرع جديد يُبنى له تطبيق EXE وAPK خاص تلقائياً من داخل النظام.</div></details>
+      <details><summary>هل يعمل بدون إنترنت؟</summary><div class="ans">النظام سحابي ويحتاج اتصالاً بالإنترنت لعمل المزامنة اللحظية بين الفروع والأجهزة.</div></details>
+      <details><summary>هل أستطيع تغيير بيانات الدخول؟</summary><div class="ans">نعم — تغيّر اسم المستخدم وكلمة المرور من داخل النظام (قسم حساب الأدمن) وتعمل التغييرات فوراً على كل الأجهزة.</div></details>
+      <details><summary>هل توجد تجربة قبل الشراء؟</summary><div class="ans">نعم — راسلني على واتساب وسأرسل لك رابط تجربة حية للنظام قبل اتخاذ قرارك.</div></details>
+      <details><summary>ماذا لو احتجت تعديلات أو إضافات؟</summary><div class="ans">تواصل معي مباشرة على واتساب +967 778 066 436 — النظام قابل للتخصيص بالكامل حسب طلبك.</div></details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="fbrand">🧾 نظام المحاسبة المتكامل</div>
+    <p>إعداد وتطوير: زهير إبراهيم — نظام محاسبة ومخازن متكامل للشركات والمتاجر</p>
+    <div class="fwa">💬 للتواصل والطلب والتعديلات: <span style="direction:ltr;display:inline-block">+967 778 066 436</span></div>
+    <a class="btn btn-wa" style="font-size:.95rem;padding:11px 26px" href="https://wa.me/967778066436?text=مرحباً زهير، جئت من موقع نظام المحاسبة وأريد التواصل." target="_blank" rel="noopener">راسلني على واتساب</a>
+    <p class="copy">© 2026 زهير إبراهيم — جميع الحقوق محفوظة</p>
+  </div>
+</footer>
+
+<a class="wa-float" href="https://wa.me/967778066436?text=مرحباً زهير، مهتم بنظام المحاسبة المتكامل (500$)." target="_blank" rel="noopener" aria-label="تواصل واتساب">
+  <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .3-3.4-.7-2.9-1.2-4.7-4.1-4.9-4.3-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5s.7 1.8.8 1.9c0 .1.1.3 0 .5-.1.2-.1.3-.3.5l-.4.5c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.7-.1.2-.2.8-.9 1-1.2.2-.3.4-.3.7-.2.3.1 1.7.8 2 1 .3.1.5.2.6.3.1.2.1.7-.1 1.2z"/></svg>
+</a>
+
+<div id="lightbox"><span class="lb-close">✕</span><div><img src="" alt=""><div class="lb-cap"></div></div></div>
+
+<script>
+const topbar=document.getElementById('topbar');
+window.addEventListener('scroll',()=>{topbar.classList.toggle('scrolled',window.scrollY>10)});
+const lb=document.getElementById('lightbox'),lbImg=lb.querySelector('img'),lbCap=lb.querySelector('.lb-cap');
+document.querySelectorAll('.shot').forEach(s=>{
+  s.addEventListener('click',()=>{
+    lbImg.src=s.querySelector('img').src;
+    lbCap.textContent=s.querySelector('figcaption').textContent.trim();
+    lb.classList.add('open');document.body.style.overflow='hidden';
+  });
+});
+function closeLb(){lb.classList.remove('open');document.body.style.overflow=''}
+lb.addEventListener('click',e=>{if(e.target===lb||e.target.classList.contains('lb-close'))closeLb()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLb()});
+</script>
+</body>
+</html>
