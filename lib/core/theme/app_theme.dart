@@ -64,6 +64,19 @@ class AppTheme {
         dividerThickness: 0.5,
       ),
       dividerTheme: const DividerThemeData(space: 1),
+      scrollbarTheme: ScrollbarThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.hovered)
+              ? const Color(0xFFFFEE58)
+              : const Color(0xFFFFF176),
+        ),
+        trackColor: const WidgetStatePropertyAll(Color(0x1AF5B21A)),
+        trackBorderColor: const WidgetStatePropertyAll(Color(0x0FF5B21A)),
+        radius: const Radius.circular(8),
+        thickness: const WidgetStatePropertyAll(10),
+        mainAxisMargin: 2,
+        crossAxisMargin: 2,
+      ),
     );
   }
 }
